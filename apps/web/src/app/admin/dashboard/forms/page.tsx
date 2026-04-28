@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { useForms, useCreateForm, usePublishForm, useUpdateForm, useDepartments } from '@/hooks'
+import { useForms, useCreateForm, usePublishForm, useDepartments } from '@/hooks'
 
 interface Field {
   id: string; type: string; label: string; key: string
@@ -103,6 +103,7 @@ export default function FormsPage() {
   const [copied, setCopied] = useState(false)
 
   const selectedField = fields.find(f => f.id === selected)
+  const isPublished = (status: unknown) => status === 'active' || status === 'published'
 
   function switchDept(d: string) {
     setDept(d)
@@ -388,7 +389,7 @@ export default function FormsPage() {
               {forms.length > 0 && (
                 <div className="p-4 flex-1 overflow-y-auto">
                   <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Published forms</div>
-                  {forms.filter((f:any)=>f.status==='published'&&f.slug).map((f:any)=>{
+                  {forms.filter((f:any)=>isPublished(f.status)&&f.slug).map((f:any)=>{
                     const url = `${typeof window!=='undefined'?window.location.origin:''}/public/apply/${f.slug}`
                     return (
                       <div key={f.id} className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
@@ -403,7 +404,7 @@ export default function FormsPage() {
                       </div>
                     )
                   })}
-                  {forms.filter((f:any)=>f.status==='published'&&f.slug).length===0 && (
+                  {forms.filter((f:any)=>isPublished(f.status)&&f.slug).length===0 && (
                     <div className="text-xs text-gray-300 text-center py-4">No published forms yet</div>
                   )}
                 </div>

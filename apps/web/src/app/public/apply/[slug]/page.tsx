@@ -148,7 +148,7 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
 
         {currentFields.map((f: any) => (
           <FieldRenderer key={f.id||f.key} field={f} value={values[f.key]} saved={savedFields.has(f.key)}
-            onChange={v=>handleChange(f.key,v)} onBlur={()=>handleBlur(f.key)} />
+            onChange={(v: unknown)=>handleChange(f.key,v)} onBlur={()=>handleBlur(f.key)} />
         ))}
 
         <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
