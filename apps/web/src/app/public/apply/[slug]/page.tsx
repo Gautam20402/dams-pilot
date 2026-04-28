@@ -4,6 +4,89 @@ import { usePublicForm } from '@/hooks'
 import { api } from '@/lib/api'
 import { getGA4ClientId, getUTMs, captureUTMs, trackEvent, getOrCreateSessionId } from '@/lib/ga4'
 
+type Field = {
+  id?: string
+  key: string
+  type: string
+  label?: string
+  required?: boolean
+  placeholder?: string
+  hint?: string
+  options?: string[]
+  validations?: {
+    min?: number
+    max?: number
+    step?: number
+    minLength?: number
+    maxLength?: number
+    pattern?: string
+    accept?: string
+    maxSizeMB?: number
+  }
+}
+
+function isEmptyValue(v: unknown) {
+  if (v === null || v === undefined) return true
+  if (typeof v === 'string') return v.trim().length === 0
+  if (Array.isArray(v)) return v.length === 0
+  return false
+}
+
+function validateField(field: Field, value: unknown) {
+  if (field.type === 'heading') return null
+
+  const label = field.label || field.key
+  const v = field.validations || {}
+
+  if (field.required && isEmptyValue(value)) return `${label} is required.`
+
+  // Skip further validations when empty and optional
+  if (isEmptyValue(value)) return null
+
+  if (field.type === 'email' && typeof value === 'string') {
+    // Simple email check; server should still validate on submit.
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+    if (!ok) return 'Please enter a valid email address.'
+  }
+
+  if ((field.type === 'text' || field.type === 'textarea' || field.type === 'tel' || field.type === 'url' || field.type === 'email') && typeof value === 'string') {
+    const s = value
+    if (typeof v.minLength === 'number' && s.length < v.minLength) return `${label} must be at least ${v.minLength} characters.`
+    if (typeof v.maxLength === 'number' && s.length > v.maxLength) return `${label} must be at most ${v.maxLength} characters.`
+    if (typeof v.pattern === 'string' && v.pattern.trim()) {
+      try {
+        const re = new RegExp(v.pattern)
+        if (!re.test(s)) return `${label} format is invalid.`
+      } catch {
+        // Ignore invalid regex patterns rather than breaking the form
+      }
+    }
+  }
+
+  if (field.type === 'number') {
+    const n = typeof value === 'number' ? value : Number(value)
+    if (Number.isNaN(n)) return `${label} must be a number.`
+    if (typeof v.min === 'number' && n < v.min) return `${label} must be at least ${v.min}.`
+    if (typeof v.max === 'number' && n > v.max) return `${label} must be at most ${v.max}.`
+  }
+
+  if (field.type === 'file' && typeof value === 'string') {
+    if (typeof v.accept === 'string' && v.accept.trim()) {
+      const allowed = v.accept
+        .split(',')
+        .map(s => s.trim().toLowerCase())
+        .filter(Boolean)
+      if (allowed.length) {
+        const filename = value.toLowerCase()
+        const ok = allowed.some(ext => filename.endsWith(ext))
+        if (!ok) return `Please upload a file of type: ${allowed.join(', ')}.`
+      }
+    }
+  }
+
+  return null
+}
+
 export default function ApplyPage({ params }: { params: { slug: string } }) {
   const { slug } = params
   const { data: formData, isLoading } = usePublicForm(slug)
@@ -11,6 +94,7 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
 
   const [step, setStep]           = useState(0)
   const [values, setValues]       = useState<Record<string,unknown>>({})
+  const [errors, setErrors]       = useState<Record<string,string>>({})
   const [leadId, setLeadId]       = useState<string|null>(null)
   const [saving, setSaving]       = useState(false)
   const [savedAt, setSavedAt]     = useState<Date|null>(null)
@@ -61,6 +145,12 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
   function handleChange(key: string, value: unknown) {
     const next = { ...values, [key]:value }
     setValues(next)
+    setErrors(prev => {
+      if (!prev[key]) return prev
+      const n = { ...prev }
+      delete n[key]
+      return n
+    })
     if (value !== '' && value !== null && value !== undefined) filledRef.current.add(key)
     scheduleSave(next)
     trackEvent('field_change', { field:key, step, slug })
@@ -74,10 +164,42 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
     trackEvent('field_blur', { field:key, step, slug })
   }
 
-  async function nextStep() { await doSave(values); setStep(s=>s+1); window.scrollTo({top:0,behavior:'smooth'}) }
+  function validateFields(fields: Field[], scope: 'page' | 'all') {
+    const nextErrors: Record<string,string> = {}
+    for (const f of fields) {
+      const msg = validateField(f, values[f.key])
+      if (msg) nextErrors[f.key] = msg
+    }
+    if (Object.keys(nextErrors).length) {
+      setErrors(prev => (scope === 'all' ? nextErrors : { ...prev, ...nextErrors }))
+      const firstKey = Object.keys(nextErrors)[0]
+      const esc = (globalThis as any).CSS?.escape
+      const safeKey = typeof esc === 'function' ? esc(firstKey) : firstKey
+      const el = document.querySelector(`[data-field-key="${safeKey}"]`)
+      if (el && 'scrollIntoView' in el) (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' })
+      trackEvent('validation_failed', { scope, step, slug, count: Object.keys(nextErrors).length })
+      return false
+    }
+    return true
+  }
+
+  async function nextStep() {
+    const fields = (((form?.schemaJson as any)?.fields ?? []) as Field[])
+    const STEP_SIZE = 6
+    const pages: Field[][] = []
+    for (let i=0; i<fields.length; i+=STEP_SIZE) pages.push(fields.slice(i,i+STEP_SIZE))
+    const currentFields = pages[step] ?? []
+
+    if (!validateFields(currentFields, 'page')) return
+    await doSave(values)
+    setStep(s=>s+1)
+    window.scrollTo({top:0,behavior:'smooth'})
+  }
   async function prevStep() { setStep(s=>s-1); window.scrollTo({top:0,behavior:'smooth'}) }
 
   async function handleSubmit() {
+    const fields = (((form?.schemaJson as any)?.fields ?? []) as Field[])
+    if (!validateFields(fields, 'all')) return
     await doSave(values)
     const id = leadId
     if (id) {
@@ -93,7 +215,7 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
   if (!form) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-gray-400">Form not found or inactive.</div></div>
   if (submitted) return <Confirmation leadId={leadId!} formName={form.name} />
 
-  const allFields = (form.schemaJson as any).fields ?? []
+  const allFields: Field[] = (form.schemaJson as any).fields ?? []
   const STEP_SIZE = 6
   const pages = []
   for (let i=0; i<allFields.length; i+=STEP_SIZE) pages.push(allFields.slice(i,i+STEP_SIZE))
@@ -147,7 +269,7 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
         <h1 className="text-xl font-semibold mb-6">{pages.length>1?`Step ${step+1} of ${pages.length}`:'Application Form'}</h1>
 
         {currentFields.map((f: any) => (
-          <FieldRenderer key={f.id||f.key} field={f} value={values[f.key]} saved={savedFields.has(f.key)}
+          <FieldRenderer key={f.id||f.key} field={f} value={values[f.key]} error={errors[f.key]} saved={savedFields.has(f.key)}
             onChange={(v: unknown)=>handleChange(f.key,v)} onBlur={()=>handleBlur(f.key)} />
         ))}
 
@@ -172,15 +294,16 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
   )
 }
 
-function FieldRenderer({field:f,value,onChange,onBlur,saved}:any) {
-  const cls = `w-full border rounded px-3 py-2 text-sm outline-none transition ${saved?'border-green-400':'border-gray-300 focus:border-gray-700'}`
+function FieldRenderer({field:f,value,onChange,onBlur,saved,error}:any) {
+  const cls = `w-full border rounded px-3 py-2 text-sm outline-none transition ${error?'border-red-400 focus:border-red-500':saved?'border-green-400':'border-gray-300 focus:border-gray-700'}`
   const lbl = (<label className="block text-sm font-medium text-gray-700 mb-1">{f.label}{f.required&&<span className="text-red-500 ml-0.5">*</span>}{saved&&<span className="text-green-500 text-xs ml-2 font-normal font-mono">✓ saved</span>}</label>)
   const hint = f.hint?<p className="text-xs text-gray-400 mb-1">{f.hint}</p>:null
+  const err = error ? <p className="text-xs text-red-600 mt-1">{error}</p> : null
 
   if (f.type==='heading') return <div className="font-semibold text-base border-b-2 border-gray-200 pb-2 mb-4 mt-6">{f.label}</div>
 
   return (
-    <div className="card mb-3">
+    <div className="card mb-3" data-field-key={f.key}>
       {lbl}{hint}
       {f.type==='textarea'&&<><textarea className={cls+' resize-none'} rows={4} placeholder={f.placeholder} value={String(value??'')} onChange={e=>onChange(e.target.value)} onBlur={onBlur}/><div className="text-right text-xs text-gray-400 font-mono mt-1">{String(value??'').split(/\s+/).filter(Boolean).length} words</div></>}
       {(f.type==='text'||f.type==='email'||f.type==='tel'||f.type==='url')&&<input type={f.type} className={cls} placeholder={f.placeholder} value={String(value??'')} onChange={e=>onChange(e.target.value)} onBlur={onBlur} required={f.required}/>}
@@ -190,6 +313,7 @@ function FieldRenderer({field:f,value,onChange,onBlur,saved}:any) {
       {f.type==='radio'&&<div className="flex flex-wrap gap-2">{(f.options??[]).map((o:string)=><button key={o} type="button" onClick={()=>{onChange(o);onBlur()}} className={`px-3 py-1.5 rounded-full border text-sm transition ${value===o?'bg-gray-900 text-white border-gray-900':'border-gray-200 hover:border-gray-400'}`}>{o}</button>)}</div>}
       {f.type==='checkbox'&&<div className="flex flex-wrap gap-2">{(f.options??[]).map((o:string)=>{const sel=Array.isArray(value)&&value.includes(o);return<button key={o} type="button" onClick={()=>{const a=Array.isArray(value)?[...value]:[];onChange(sel?a.filter(x=>x!==o):[...a,o]);onBlur()}} className={`px-3 py-1.5 rounded border text-sm transition ${sel?'bg-gray-900 text-white border-gray-900':'border-gray-200 hover:border-gray-400'}`}>{o}</button>})}</div>}
       {f.type==='file'&&<div className="border-2 border-dashed border-gray-200 rounded-lg p-5 text-center hover:border-gray-400 transition cursor-pointer relative"><input type="file" accept={f.validations?.accept} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={e=>{if(e.target.files?.[0]){onChange(e.target.files[0].name);onBlur()}}}/><div className="text-xl mb-1">📎</div><div className="text-sm text-gray-600">{value?`✓ ${value}`:'Click or drag to upload'}</div><div className="text-xs text-gray-400 mt-1">{f.validations?.accept||''} · max {f.validations?.maxSizeMB||10}MB</div></div>}
+      {err}
     </div>
   )
 }
