@@ -11,7 +11,24 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`badge s-${status}`}>{status.replace('_',' ')}</span>
 }
 function SourceBadge({ source }: { source: string }) {
-  return <span className={`src-${source}`}>{source.replace('_',' ')}</span>
+  const label =
+    source === 'ga_poll' ? 'GA4 Poll'
+    : source === 'partial_save' ? 'Partial Save'
+    : source === 'direct' ? 'Direct'
+    : source.replaceAll('_', ' ')
+
+  return (
+    <span
+      className={[
+        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+        'border border-gray-200 bg-gray-50 text-gray-700 whitespace-nowrap',
+        `src-${source}`,
+      ].join(' ')}
+      title={label}
+    >
+      {label}
+    </span>
+  )
 }
 function PctBar({ pct }: { pct: number }) {
   const color = pct >= 80 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626'
@@ -146,51 +163,53 @@ export default function DashboardPage() {
           </div>
 
           {/* Table */}
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-            <div className="grid grid-cols-[1fr_140px_120px_80px_90px_100px_120px] px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-              {['Applicant','Program','Status','Completion','Source','Created','Actions'].map(h=>(
-                <div key={h} className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{h}</div>
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-x-auto">
+            <div className="min-w-[900px]">
+              <div className="grid grid-cols-[minmax(260px,1fr)_140px_120px_110px_110px_120px_140px] px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                {['Applicant','Program','Status','Completion','Source','Created','Actions'].map(h=>(
+                  <div key={h} className="text-xs font-semibold text-gray-400 uppercase tracking-widest whitespace-nowrap">{h}</div>
+                ))}
+              </div>
+              {isLoading ? (
+                <div className="text-center py-16 text-sm text-gray-400">Loading…</div>
+              ) : leads.length===0 ? (
+                <div className="text-center py-16 text-gray-400">
+                  <div className="text-3xl mb-2">📭</div>
+                  <div className="text-sm">No leads match your filters</div>
+                </div>
+              ) : leads.map(lead => (
+                <div key={lead.id}
+                  onClick={()=>setSelectedId(lead.id===selectedId?null:lead.id)}
+                  className={`grid grid-cols-[minmax(260px,1fr)_140px_120px_110px_110px_120px_140px] px-4 py-3 border-b border-gray-100 items-center cursor-pointer last:border-0 transition
+                    ${selectedId===lead.id?'bg-blue-50':'hover:bg-gray-50'}`}>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{lead.firstName} {lead.lastName}</div>
+                    <div className="text-xs text-gray-400 font-mono truncate">{lead.email}</div>
+                  </div>
+                  <div className="text-xs text-gray-600 leading-tight truncate">{(lead as any).form?.name??'—'}</div>
+                  <div><StatusBadge status={lead.status}/></div>
+                  <div><PctBar pct={lead.completionPct}/></div>
+                  <div><SourceBadge source={lead.source}/></div>
+                  <div className="text-xs font-mono text-gray-400">{fmtDate(lead.createdAt)}</div>
+                  <div className="flex gap-1.5" onClick={e=>e.stopPropagation()}>
+                    {perms.canSendOutreach && (
+                      <button className="btn-success btn-xs" disabled={emailPending||!lead.email}
+                        onClick={()=>sendEmail({ to:lead.email!, subject:'Your application — next steps',
+                          body:`Hi ${lead.firstName},\n\nYour application is waiting.\n\n— Admissions`, leadId:lead.id })}>
+                        Email
+                      </button>
+                    )}
+                    {perms.canUpdateStatus && (
+                      <select className="text-xs border border-gray-200 rounded px-1.5 py-0.5 cursor-pointer outline-none"
+                        value={lead.status} onChange={e=>updateStatus({id:lead.id,status:e.target.value})}
+                        onClick={e=>e.stopPropagation()}>
+                        {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                      </select>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
-            {isLoading ? (
-              <div className="text-center py-16 text-sm text-gray-400">Loading…</div>
-            ) : leads.length===0 ? (
-              <div className="text-center py-16 text-gray-400">
-                <div className="text-3xl mb-2">📭</div>
-                <div className="text-sm">No leads match your filters</div>
-              </div>
-            ) : leads.map(lead => (
-              <div key={lead.id}
-                onClick={()=>setSelectedId(lead.id===selectedId?null:lead.id)}
-                className={`grid grid-cols-[1fr_140px_120px_80px_90px_100px_120px] px-4 py-3 border-b border-gray-100 items-center cursor-pointer last:border-0 transition
-                  ${selectedId===lead.id?'bg-blue-50':'hover:bg-gray-50'}`}>
-                <div>
-                  <div className="text-sm font-medium">{lead.firstName} {lead.lastName}</div>
-                  <div className="text-xs text-gray-400 font-mono">{lead.email}</div>
-                </div>
-                <div className="text-xs text-gray-600 leading-tight">{(lead as any).form?.name??'—'}</div>
-                <div><StatusBadge status={lead.status}/></div>
-                <div><PctBar pct={lead.completionPct}/></div>
-                <div><SourceBadge source={lead.source}/></div>
-                <div className="text-xs font-mono text-gray-400">{fmtDate(lead.createdAt)}</div>
-                <div className="flex gap-1.5" onClick={e=>e.stopPropagation()}>
-                  {perms.canSendOutreach && (
-                    <button className="btn-success btn-xs" disabled={emailPending||!lead.email}
-                      onClick={()=>sendEmail({ to:lead.email!, subject:'Your application — next steps',
-                        body:`Hi ${lead.firstName},\n\nYour application is waiting.\n\n— Admissions`, leadId:lead.id })}>
-                      Email
-                    </button>
-                  )}
-                  {perms.canUpdateStatus && (
-                    <select className="text-xs border border-gray-200 rounded px-1.5 py-0.5 cursor-pointer outline-none"
-                      value={lead.status} onChange={e=>updateStatus({id:lead.id,status:e.target.value})}
-                      onClick={e=>e.stopPropagation()}>
-                      {ALL_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
-                    </select>
-                  )}
-                </div>
-              </div>
-            ))}
           </div>
 
           {/* Pagination */}
