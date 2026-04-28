@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { prisma } from '@dams/db'
+import { prisma, Prisma } from '@dams/db'
 import { PartialSaveSchema, UpdateLeadStatusSchema, LeadFiltersSchema } from '@dams/validators'
 import { requirePermission, scopeToDepartment } from '../middleware/auth.js'
 import { salesforceService } from '../services/salesforce.js'
@@ -21,7 +21,7 @@ export async function leadsRoutes(fastify: FastifyInstance) {
         sessionId:d.sessionId, formId:d.formId, departmentId:d.departmentId,
         status:'partial', source:d.source as any,
         firstName:dj.first_name, lastName:dj.last_name, email:dj.email, phone:dj.phone,
-        dataJson:d.dataJson, gaClientId:d.gaClientId,
+        dataJson:d.dataJson as Prisma.InputJsonValue, gaClientId:d.gaClientId,
         utmSource:d.utmSource, utmMedium:d.utmMedium, utmCampaign:d.utmCampaign,
         utmContent:d.utmContent, utmTerm:d.utmTerm,
         lastActivePage:d.lastActivePage, fieldsFilled:d.fieldsFilled, completionPct:d.completionPct,
@@ -29,7 +29,7 @@ export async function leadsRoutes(fastify: FastifyInstance) {
       update: {
         firstName:dj.first_name??undefined, lastName:dj.last_name??undefined,
         email:dj.email??undefined, phone:dj.phone??undefined,
-        dataJson:d.dataJson, lastActivePage:d.lastActivePage,
+        dataJson:d.dataJson as Prisma.InputJsonValue, lastActivePage:d.lastActivePage,
         fieldsFilled:d.fieldsFilled, completionPct:d.completionPct,
       },
     })

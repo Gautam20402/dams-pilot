@@ -9,6 +9,7 @@ import { formsRoutes }     from './routes/forms.js'
 import { outreachRoutes }  from './routes/outreach.js'
 import { authRoutes, webhooksRoutes } from './routes/auth.js'
 import { departmentsRoutes } from './routes/departments.js'
+import { salesforceRoutes } from './routes/salesforce.js'
 
 const server = Fastify({
   logger: {
@@ -42,6 +43,7 @@ await server.register(leadsRoutes,       { prefix:'/api/leads' })
 await server.register(formsRoutes,       { prefix:'/api/forms' })
 await server.register(outreachRoutes,    { prefix:'/api/outreach' })
 await server.register(departmentsRoutes, { prefix:'/api/departments' })
+await server.register(salesforceRoutes,  { prefix:'/api/salesforce' })
 await server.register(webhooksRoutes,    { prefix:'/api/webhooks' })
 
 server.setErrorHandler((error, _req, reply) => {

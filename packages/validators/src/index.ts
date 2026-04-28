@@ -65,6 +65,30 @@ export const LogCallSchema = z.object({
   outcome:  z.string().optional(),
 })
 
+const SalesforceFieldValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+])
+
+export const SalesforceLeadSchema = z.object({
+  leadId: z.string().min(1).optional(),
+  mandatoryFields: z.object({
+    lastName:   z.string().min(1),
+    company:    z.string().min(1).default('Applicant'),
+    firstName:  z.string().optional(),
+    email:      z.string().email().optional(),
+    phone:      z.string().optional(),
+    leadSource: z.string().optional(),
+    status:     z.string().optional(),
+  }),
+  dynamicFields: z.record(
+    z.string().regex(/^[A-Za-z][A-Za-z0-9_]*(__c)?$/, 'Use Salesforce field API names only'),
+    SalesforceFieldValueSchema,
+  ).default({}),
+})
+
 export const SyncUserSchema = z.object({
   clerkId:      z.string().min(1),
   email:        z.string().email(),
@@ -81,3 +105,4 @@ export type CreateFormInput       = z.infer<typeof CreateFormSchema>
 export type SendEmailInput        = z.infer<typeof SendEmailSchema>
 export type SendSMSInput          = z.infer<typeof SendSMSSchema>
 export type LogCallInput          = z.infer<typeof LogCallSchema>
+export type SalesforceLeadInput   = z.infer<typeof SalesforceLeadSchema>

@@ -1,6 +1,6 @@
 // ── forms.ts ──────────────────────────────────────────────────────────────────
 import type { FastifyInstance } from 'fastify'
-import { prisma } from '@dams/db'
+import { prisma, Prisma } from '@dams/db'
 import { CreateFormSchema, UpdateFormSchema } from '@dams/validators'
 import { requirePermission, scopeToDepartment } from '../middleware/auth.js'
 
@@ -37,7 +37,9 @@ export async function formsRoutes(fastify: FastifyInstance) {
     if (!b.success) return reply.status(400).send({ success:false, error:b.error.flatten(), code:'VALIDATION_ERROR' })
     const departmentId = req.userRole==='SUPER_ADMIN' ? b.data.departmentId : req.departmentId!
     const slug = b.data.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'').slice(0,60)+'-'+Date.now().toString(36)
-    const form = await prisma.form.create({ data:{ ...b.data, departmentId, slug } })
+    const form = await prisma.form.create({
+      data:{ ...b.data, departmentId, slug, schemaJson:b.data.schemaJson as Prisma.InputJsonValue },
+    })
     return reply.status(201).send({ success:true, data:form })
   })
 
