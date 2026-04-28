@@ -101,7 +101,8 @@ export default function FormsPage() {
   const { mutate: createForm, isPending: creating } = useCreateForm()
   const { mutate: publishForm } = usePublishForm()
   const [publishedUrl, setPublishedUrl] = useState<string|null>(null)
-  const [copied, setCopied] = useState(false)
+  const [copiedModal, setCopiedModal] = useState(false)
+  const [copiedFormId, setCopiedFormId] = useState<string | null>(null)
 
   const selectedField = fields.find(f => f.id === selected)
   const isPublished = (status: unknown) => status === 'active' || status === 'published'
@@ -220,10 +221,21 @@ export default function FormsPage() {
     })
   }
 
-  function copyUrl(url: string) {
-    navigator.clipboard.writeText(url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  async function copyToClipboard(text: string) {
+    await navigator.clipboard.writeText(text)
+  }
+
+  function copyModalUrl(url: string) {
+    void copyToClipboard(url)
+    setCopiedModal(true)
+    setTimeout(() => setCopiedModal(false), 2000)
+  }
+
+  function copyFormUrl(formId: string, slug: string) {
+    const url = `${window.location.origin}/public/apply/${slug}`
+    void copyToClipboard(url)
+    setCopiedFormId(formId)
+    setTimeout(() => setCopiedFormId(prev => (prev === formId ? null : prev)), 2000)
   }
 
   const vTags = (f: Field) => {
@@ -258,9 +270,9 @@ export default function FormsPage() {
               <span className="text-xs font-mono text-gray-700 flex-1 break-all">{publishedUrl}</span>
             </div>
             <div className="flex gap-2 mt-3">
-              <button onClick={()=>copyUrl(publishedUrl)}
-                className={`btn flex-1 text-sm py-2 ${copied?'bg-green-500 text-white border-green-500':'btn-dark'}`}>
-                {copied ? '✓ Copied!' : 'Copy link'}
+              <button onClick={()=>copyModalUrl(publishedUrl)}
+                className={`btn flex-1 text-sm py-2 ${copiedModal?'bg-green-500 text-white border-green-500':'btn-dark'}`}>
+                {copiedModal ? '✓ Copied!' : 'Copy link'}
               </button>
               <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
                 className="btn btn-outline text-sm py-2 px-4">Open ↗</a>
@@ -395,13 +407,16 @@ export default function FormsPage() {
                   <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Published forms</div>
                   {forms.filter((f:any)=>isPublished(f.status)&&f.slug).map((f:any)=>{
                     const url = `${typeof window!=='undefined'?window.location.origin:''}/public/apply/${f.slug}`
+                    const isCopied = copiedFormId === f.id
                     return (
                       <div key={f.id} className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
                         <div className="text-xs font-medium text-gray-700 mb-1 truncate">{f.name}</div>
                         <div className="text-xs font-mono text-gray-400 truncate mb-2">/public/apply/{f.slug}</div>
                         <div className="flex gap-1.5">
-                          <button onClick={()=>copyUrl(url)}
-                            className="btn btn-outline btn-xs flex-1 text-xs">{copied?'✓ Copied':'Copy link'}</button>
+                          <button onClick={()=>copyFormUrl(f.id, f.slug)}
+                            className={`btn btn-outline btn-xs flex-1 text-xs ${isCopied ? 'bg-green-50 border-green-200 text-green-700' : ''}`}>
+                            {isCopied ? '✓ Copied' : 'Copy link'}
+                          </button>
                           <a href={url} target="_blank" rel="noopener noreferrer"
                             className="btn btn-outline btn-xs px-2 text-xs">↗</a>
                         </div>
