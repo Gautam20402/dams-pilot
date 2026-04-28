@@ -8,6 +8,7 @@ import { leadsRoutes }     from './routes/leads.js'
 import { formsRoutes }     from './routes/forms.js'
 import { outreachRoutes }  from './routes/outreach.js'
 import { authRoutes, webhooksRoutes } from './routes/auth.js'
+import { departmentsRoutes } from './routes/departments.js'
 
 const server = Fastify({
   logger: {
@@ -36,11 +37,12 @@ server.get('/health', async () => ({ status:'ok', ts: new Date().toISOString(), 
 
 server.addHook('preHandler', authMiddleware)
 
-await server.register(authRoutes,     { prefix:'/api/auth' })
-await server.register(leadsRoutes,    { prefix:'/api/leads' })
-await server.register(formsRoutes,    { prefix:'/api/forms' })
-await server.register(outreachRoutes, { prefix:'/api/outreach' })
-await server.register(webhooksRoutes, { prefix:'/api/webhooks' })
+await server.register(authRoutes,        { prefix:'/api/auth' })
+await server.register(leadsRoutes,       { prefix:'/api/leads' })
+await server.register(formsRoutes,       { prefix:'/api/forms' })
+await server.register(outreachRoutes,    { prefix:'/api/outreach' })
+await server.register(departmentsRoutes, { prefix:'/api/departments' })
+await server.register(webhooksRoutes,    { prefix:'/api/webhooks' })
 
 server.setErrorHandler((error, _req, reply) => {
   server.log.error(error)

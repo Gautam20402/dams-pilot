@@ -3,7 +3,20 @@
     "allow": [
       "Bash(pnpm dev *)",
       "Bash(curl -s http://localhost:3000/admin/dashboard)",
-      "Bash(curl -s \"http://localhost:3000/_next/static/css/app/layout.css\")"
+      "Bash(curl -s \"http://localhost:3000/_next/static/css/app/layout.css\")",
+      "Bash(mkdir -p /Users/pradeepkumar/Desktop/CodeRepo/dams-final/apps/web/src/app/public/apply/\\\\[slug\\\\])",
+      "Bash(mv /Users/pradeepkumar/Desktop/CodeRepo/dams-final/apps/web/src/app/public/apply/page.tsx /Users/pradeepkumar/Desktop/CodeRepo/dams-final/apps/web/src/app/public/apply/\\\\[slug\\\\]/page.tsx)",
+      "Bash(curl -s http://localhost:3001/health)",
+      "Bash(pnpm add *)",
+      "Bash(curl -s http://localhost:3001/api/departments)",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/sync -H 'Content-Type: application/json' -d '{\"clerkId\":\"user_3CyuB1zswEqi6BEDZdvvtbw7RcW\",\"email\":\"aryapradeepuk@gmail.com\",\"firstName\":\"Pradeep Kumar\",\"lastName\":\"Arya\",\"role\":\"SUPER_ADMIN\"}')",
+      "Bash(curl -s http://localhost:3001/api/departments -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(curl -s http://localhost:3001/api/forms -H 'Authorization: Bearer __CMDSUB_OUTPUT__')",
+      "Bash(curl -s http://localhost:3001/api/leads -H 'Authorization: Bearer change_this_to_a_random_32_char_string')",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -sv -X POST http://localhost:3001/api/leads/partial -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -s -X POST http://localhost:3001/api/leads/submit -H 'Content-Type: application/json' -d '{\"leadId\":\"cmoihobws000ftqa38v22i28b\",\"sessionId\":\"test-session-debug-001\"}')"
     ]
   }
 }

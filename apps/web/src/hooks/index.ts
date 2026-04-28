@@ -3,7 +3,7 @@ import { api } from '@/lib/api'
 
 // ── Leads ──────────────────────────────────────────────────────────────────────
 export function useLeads(params?: Record<string,string>) {
-  return useQuery({ queryKey:['leads',params], queryFn:()=>api.getLeads(params) })
+  return useQuery({ queryKey:['leads',params], queryFn:()=>api.getLeads(params), staleTime: 15_000, refetchInterval: 30_000 })
 }
 export function useLead(id: string) {
   return useQuery({ queryKey:['lead',id], queryFn:()=>api.getLead(id), enabled:!!id })
@@ -43,6 +43,11 @@ export function useUpdateForm() {
     mutationFn: ({id,data}:{id:string;data:unknown}) => api.updateForm(id,data),
     onSuccess:  ()=>qc.invalidateQueries({queryKey:['forms']}),
   })
+}
+
+// ── Departments ────────────────────────────────────────────────────────────────
+export function useDepartments() {
+  return useQuery({ queryKey:['departments'], queryFn:()=>api.getDepartments() })
 }
 
 // ── Outreach ───────────────────────────────────────────────────────────────────

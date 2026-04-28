@@ -46,6 +46,23 @@ export async function leadsRoutes(fastify: FastifyInstance) {
     return reply.status(201).send({ success:true, data:{ id:lead.id, sessionId:lead.sessionId } })
   })
 
+  // PUBLIC — final form submission
+  fastify.post('/submit', async (req, reply) => {
+    const { leadId, sessionId } = req.body as { leadId: string; sessionId: string }
+    if (!leadId || !sessionId) return reply.status(400).send({ success:false, error:'leadId and sessionId required', code:'VALIDATION_ERROR' })
+
+    const lead = await prisma.lead.findUnique({ where:{ id:leadId } })
+    if (!lead) return reply.status(404).send({ success:false, error:'Lead not found', code:'NOT_FOUND' })
+    if (lead.sessionId !== sessionId) return reply.status(403).send({ success:false, error:'Forbidden', code:'SESSION_MISMATCH' })
+
+    const updated = await prisma.lead.update({
+      where: { id:leadId },
+      data:  { status:'submitted', completionPct:100, submittedAt:new Date() },
+    })
+    await prisma.leadEvent.create({ data:{ leadId, eventType:'form_submitted', metadata:{ source:'public_form' } } })
+    return reply.send({ success:true, data:{ id:updated.id, status:updated.status } })
+  })
+
   // PUBLIC — drop-off beacon
   fastify.post('/drop-off', async (req, reply) => {
     const { sessionId, step, fieldsFilled } = req.body as any

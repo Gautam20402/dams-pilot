@@ -27,6 +27,7 @@ export const api = {
   getLead:       (id: string)                => apiClient.get(`/api/leads/${id}`).then(r=>r.data),
   getLeadStats:  ()                          => apiClient.get('/api/leads/stats/summary').then(r=>r.data),
   partialSave:   (d: unknown)                => apiClient.post('/api/leads/partial', d).then(r=>r.data),
+  submitLead:    (leadId: string, sessionId: string) => apiClient.post('/api/leads/submit', { leadId, sessionId }).then(r=>r.data),
   dropOff:       (d: unknown)                => apiClient.post('/api/leads/drop-off', d).then(r=>r.data),
   updateStatus:  (id: string, d: unknown)    => apiClient.patch(`/api/leads/${id}/status`, d).then(r=>r.data),
   // Forms
@@ -42,6 +43,8 @@ export const api = {
   sendSMS:       (d: unknown)                => apiClient.post('/api/outreach/sms', d).then(r=>r.data),
   logCall:       (d: unknown)                => apiClient.post('/api/outreach/call', d).then(r=>r.data),
   getOutreach:   (leadId: string)            => apiClient.get(`/api/outreach/${leadId}`).then(r=>r.data),
+  // Departments
+  getDepartments: () => apiClient.get('/api/departments').then(r=>r.data),
   // Auth
   syncUser:      (d: unknown)                => apiClient.post('/api/auth/sync', d).then(r=>r.data),
   getMe:         ()                          => apiClient.get('/api/auth/me').then(r=>r.data),

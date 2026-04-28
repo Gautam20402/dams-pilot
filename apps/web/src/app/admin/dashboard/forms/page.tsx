@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { useForms, useCreateForm, usePublishForm, useUpdateForm } from '@/hooks'
+import { useForms, useCreateForm, usePublishForm, useUpdateForm, useDepartments } from '@/hooks'
 
 interface Field {
   id: string; type: string; label: string; key: string
@@ -95,8 +95,12 @@ export default function FormsPage() {
 
   const { data } = useForms()
   const forms = data?.data ?? []
+  const { data: deptData } = useDepartments()
+  const departments: { id: string; name: string; slug: string }[] = deptData?.data ?? []
   const { mutate: createForm, isPending: creating } = useCreateForm()
   const { mutate: publishForm } = usePublishForm()
+  const [publishedUrl, setPublishedUrl] = useState<string|null>(null)
+  const [copied, setCopied] = useState(false)
 
   const selectedField = fields.find(f => f.id === selected)
 
@@ -200,9 +204,24 @@ export default function FormsPage() {
 
   function handlePublish() {
     const schema = { fields: fields.map(({id:_,...f})=>f) }
-    createForm({ name:formName, departmentId:dept+'-dept-id', schemaJson:schema }, {
-      onSuccess: (res: any) => { publishForm(res.data.id) }
+    const realDept = departments.find(d => d.slug === dept || d.slug === dept.replace('_','-'))
+    const departmentId = realDept?.id ?? departments[0]?.id ?? dept
+    createForm({ name:formName, departmentId, schemaJson:schema }, {
+      onSuccess: (res: any) => {
+        publishForm(res.data.id, {
+          onSuccess: (pubRes: any) => {
+            const slug = pubRes.data?.slug ?? res.data?.slug
+            if (slug) setPublishedUrl(`${window.location.origin}/public/apply/${slug}`)
+          }
+        })
+      }
     })
+  }
+
+  function copyUrl(url: string) {
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const vTags = (f: Field) => {
@@ -219,13 +238,43 @@ export default function FormsPage() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+      {/* Published URL modal */}
+      {publishedUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={()=>setPublishedUrl(null)}>
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-lg w-full mx-4" onClick={e=>e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm">✓</div>
+                <div>
+                  <div className="font-semibold text-sm">Form published</div>
+                  <div className="text-xs text-gray-400">Share this link with applicants</div>
+                </div>
+              </div>
+              <button onClick={()=>setPublishedUrl(null)} className="w-7 h-7 rounded hover:bg-gray-100 flex items-center justify-center text-gray-400">✕</button>
+            </div>
+            <div className="flex gap-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <span className="text-xs font-mono text-gray-700 flex-1 break-all">{publishedUrl}</span>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <button onClick={()=>copyUrl(publishedUrl)}
+                className={`btn flex-1 text-sm py-2 ${copied?'bg-green-500 text-white border-green-500':'btn-dark'}`}>
+                {copied ? '✓ Copied!' : 'Copy link'}
+              </button>
+              <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
+                className="btn btn-outline text-sm py-2 px-4">Open ↗</a>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Topbar */}
       <div className="h-13 bg-white border-b border-gray-200 flex items-center px-5 gap-3 shrink-0">
         <div className="w-7 h-7 bg-gray-900 rounded flex items-center justify-center text-white text-xs font-bold">D</div>
         <span className="font-semibold text-sm">Form Builder</span>
         <div className="w-px h-4 bg-gray-200"/>
         <select className="border border-gray-200 rounded px-2 py-1.5 text-xs outline-none bg-gray-50" value={dept} onChange={e=>switchDept(e.target.value)}>
-          {Object.entries(DEPT_NAMES).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+          {(departments.length > 0 ? departments : Object.entries(DEPT_NAMES).map(([k,v])=>({slug:k,name:v,id:k}))).map(d=>(
+            <option key={d.slug} value={d.slug}>{d.name}</option>
+          ))}
         </select>
         <div className="w-px h-4 bg-gray-200"/>
         <input value={formName} onChange={e=>{setFormName(e.target.value);triggerSave()}}
@@ -331,9 +380,34 @@ export default function FormsPage() {
         {/* Inspector */}
         <aside className="w-72 bg-white border-l border-gray-200 overflow-y-auto shrink-0">
           {!selectedField ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 p-6 text-center">
-              <div className="text-3xl mb-3 opacity-30">◎</div>
-              <div className="text-sm">Click a field to edit its properties</div>
+            <div className="flex flex-col h-full text-gray-400">
+              <div className="flex flex-col items-center justify-center py-8 px-6 text-center border-b border-gray-100">
+                <div className="text-3xl mb-3 opacity-30">◎</div>
+                <div className="text-sm">Click a field to edit its properties</div>
+              </div>
+              {forms.length > 0 && (
+                <div className="p-4 flex-1 overflow-y-auto">
+                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Published forms</div>
+                  {forms.filter((f:any)=>f.status==='published'&&f.slug).map((f:any)=>{
+                    const url = `${typeof window!=='undefined'?window.location.origin:''}/public/apply/${f.slug}`
+                    return (
+                      <div key={f.id} className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <div className="text-xs font-medium text-gray-700 mb-1 truncate">{f.name}</div>
+                        <div className="text-xs font-mono text-gray-400 truncate mb-2">/public/apply/{f.slug}</div>
+                        <div className="flex gap-1.5">
+                          <button onClick={()=>copyUrl(url)}
+                            className="btn btn-outline btn-xs flex-1 text-xs">{copied?'✓ Copied':'Copy link'}</button>
+                          <a href={url} target="_blank" rel="noopener noreferrer"
+                            className="btn btn-outline btn-xs px-2 text-xs">↗</a>
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {forms.filter((f:any)=>f.status==='published'&&f.slug).length===0 && (
+                    <div className="text-xs text-gray-300 text-center py-4">No published forms yet</div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="p-4">

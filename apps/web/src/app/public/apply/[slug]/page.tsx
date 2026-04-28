@@ -1,11 +1,11 @@
 'use client'
-import { use, useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { usePublicForm } from '@/hooks'
 import { api } from '@/lib/api'
 import { getGA4ClientId, getUTMs, captureUTMs, trackEvent, getOrCreateSessionId } from '@/lib/ga4'
 
-export default function ApplyPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = use(params)
+export default function ApplyPage({ params }: { params: { slug: string } }) {
+  const { slug } = params
   const { data: formData, isLoading } = usePublicForm(slug)
   const form = formData?.data
 
@@ -79,8 +79,13 @@ export default function ApplyPage({ params }: { params: Promise<{ slug: string }
 
   async function handleSubmit() {
     await doSave(values)
-    if (leadId) await api.updateStatus(leadId, { status:'submitted' })
-    trackEvent('form_submit', { slug, leadId })
+    const id = leadId
+    if (id) {
+      try {
+        await api.submitLead(id, sessionId.current)
+      } catch(e) { console.error('Submit failed', e) }
+    }
+    trackEvent('form_submit', { slug, leadId: id })
     setSubmitted(true)
   }
 

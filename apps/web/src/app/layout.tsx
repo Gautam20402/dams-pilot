@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
 import { QueryProvider } from '@/components/providers/query-provider'
+import { UserSync } from '@/components/providers/user-sync'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -13,7 +14,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <ClerkProvider>
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            <UserSync />
+            {children}
+          </QueryProvider>
         </ClerkProvider>
       </body>
     </html>

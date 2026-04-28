@@ -3,7 +3,7 @@ import { prisma } from '@dams/db'
 import type { UserRole } from '@dams/types'
 import { ROLE_PERMISSIONS } from '@dams/types'
 
-const PUBLIC = ['/health', '/api/webhooks', '/api/leads/partial', '/api/leads/drop-off', '/api/forms/public/']
+const PUBLIC = ['/health', '/api/webhooks', '/api/leads/partial', '/api/leads/drop-off', '/api/leads/submit', '/api/forms/public/', '/api/auth/sync']
 
 declare module 'fastify' {
   interface FastifyRequest {
