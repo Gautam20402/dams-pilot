@@ -12,3 +12,5 @@ coverage
 .prisma
 .pnpm-store/
 generated
+*.tsbuildinfo
+.next/
