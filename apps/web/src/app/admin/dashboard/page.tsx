@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useLeads, useLeadStats, useUpdateLeadStatus, useSendEmail } from '@/hooks'
-import { useUser } from '@clerk/nextjs'
+import { SignOutButton, useUser } from '@clerk/nextjs'
 import { ROLE_PERMISSIONS } from '@dams/types'
 import type { Lead, UserRole, LeadStatus } from '@dams/types'
 
@@ -75,6 +75,9 @@ export default function DashboardPage() {
           <span className="text-xs bg-gray-100 border border-gray-200 rounded px-2 py-1 font-mono">{role}</span>
           <a href="/admin/dashboard/forms" className="btn btn-outline btn-sm">Form Builder</a>
           <button className="btn btn-dark btn-sm" onClick={() => refetch()}>↺ Refresh</button>
+          <SignOutButton redirectUrl="/auth/sign-in">
+            <button className="btn btn-outline btn-sm">Logout</button>
+          </SignOutButton>
         </div>
       </div>
 

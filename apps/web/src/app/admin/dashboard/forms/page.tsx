@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useForms, useCreateForm, usePublishForm, useDepartments } from '@/hooks'
+import { SignOutButton } from '@clerk/nextjs'
 
 interface Field {
   id: string; type: string; label: string; key: string
@@ -285,6 +286,9 @@ export default function FormsPage() {
         <span className="text-xs text-gray-400">{saved?'Saved':'Saving…'}</span>
         <div className="ml-auto flex gap-2">
           <a href="/admin/dashboard" className="btn btn-outline btn-sm">← Dashboard</a>
+          <SignOutButton redirectUrl="/auth/sign-in">
+            <button className="btn btn-outline btn-sm">Logout</button>
+          </SignOutButton>
           <button className="btn btn-dark btn-sm" disabled={creating} onClick={handlePublish}>
             {creating?'Publishing…':'Publish form'}
           </button>
