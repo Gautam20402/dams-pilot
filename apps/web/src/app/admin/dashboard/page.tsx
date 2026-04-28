@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { useLeads, useLeadStats, useUpdateLeadStatus, useSendEmail } from '@/hooks'
+import { useLeads, useLeadStats, useUpdateLeadStatus, useSendEmail, useForms } from '@/hooks'
 import { SignOutButton, useUser } from '@clerk/nextjs'
 import { ROLE_PERMISSIONS } from '@dams/types'
 import type { Lead, UserRole, LeadStatus } from '@dams/types'
@@ -60,9 +60,18 @@ export default function DashboardPage() {
   const { data: statsData }          = useLeadStats()
   const { mutate: updateStatus }     = useUpdateLeadStatus()
   const { mutate: sendEmail, isPending: emailPending } = useSendEmail()
+  const { data: formsData }          = useForms()
   const leads: Lead[]    = data?.data ?? []
   const pagination       = data?.pagination
   const stats            = statsData?.data
+  const publishedForms   = (formsData?.data ?? []).filter((f: any) => f.status === 'active' && f.slug)
+  const [copiedSlug, setCopiedSlug] = useState<string|null>(null)
+
+  function copyFormUrl(slug: string) {
+    navigator.clipboard.writeText(`${window.location.origin}/public/apply/${slug}`)
+    setCopiedSlug(slug)
+    setTimeout(() => setCopiedSlug(null), 2000)
+  }
 
   function setF(k: string, v: string) {
     setFilters(p => v ? { ...p, [k]:v } : Object.fromEntries(Object.entries(p).filter(([key]) => key !== k)))
@@ -116,6 +125,27 @@ export default function DashboardPage() {
                 )}
               </button>
             ))}
+            {publishedForms.length > 0 && (
+              <div className="mt-4 border-t border-gray-100 pt-3">
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 px-2">Published Forms</div>
+                {publishedForms.map((f: any) => (
+                  <div key={f.id} className="mb-2 px-2">
+                    <div className="text-xs font-medium text-gray-700 truncate mb-1" title={f.name}>{f.name}</div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => copyFormUrl(f.slug)}
+                        className="flex-1 text-xs px-2 py-1 rounded border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600 transition truncate">
+                        {copiedSlug === f.slug ? '✓ Copied' : '⧉ Copy URL'}
+                      </button>
+                      <a href={`/public/apply/${f.slug}`} target="_blank" rel="noopener noreferrer"
+                        className="text-xs px-2 py-1 rounded border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-600 transition">
+                        ↗
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </aside>
 

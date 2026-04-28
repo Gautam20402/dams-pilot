@@ -96,6 +96,7 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
   const [values, setValues]       = useState<Record<string,unknown>>({})
   const [errors, setErrors]       = useState<Record<string,string>>({})
   const [leadId, setLeadId]       = useState<string|null>(null)
+  const leadIdRef                 = useRef<string|null>(null)
   const [saving, setSaving]       = useState(false)
   const [savedAt, setSavedAt]     = useState<Date|null>(null)
   const [submitted, setSubmitted] = useState(false)
@@ -130,12 +131,15 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
         dataJson:vals, gaClientId:getGA4ClientId(), ...getUTMs(),
         lastActivePage:step, fieldsFilled:filled, completionPct:pct, source:'partial_save',
       })
-      if (!leadId) setLeadId(res.data.id)
+      if (!leadIdRef.current) {
+        leadIdRef.current = res.data.id
+        setLeadId(res.data.id)
+      }
       setSavedAt(new Date())
       trackEvent('auto_save', { filled, pct, step, slug })
     } catch(e) { console.error('Save failed', e) }
     finally { setSaving(false) }
-  }, [form, step, leadId, slug])
+  }, [form, step, slug])
 
   function scheduleSave(vals: Record<string,unknown>) {
     clearTimeout(saveTimer.current)
@@ -201,7 +205,7 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
     const fields = (((form?.schemaJson as any)?.fields ?? []) as Field[])
     if (!validateFields(fields, 'all')) return
     await doSave(values)
-    const id = leadId
+    const id = leadIdRef.current   // always the latest value, no stale closure
     if (id) {
       try {
         await api.submitLead(id, sessionId.current)

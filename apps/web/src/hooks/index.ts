@@ -3,13 +3,13 @@ import { api } from '@/lib/api'
 
 // ── Leads ──────────────────────────────────────────────────────────────────────
 export function useLeads(params?: Record<string,string>) {
-  return useQuery({ queryKey:['leads',params], queryFn:()=>api.getLeads(params), staleTime: 15_000, refetchInterval: 30_000 })
+  return useQuery({ queryKey:['leads',params], queryFn:()=>api.getLeads(params), staleTime: 0, refetchInterval: 10_000, refetchOnWindowFocus: true })
 }
 export function useLead(id: string) {
   return useQuery({ queryKey:['lead',id], queryFn:()=>api.getLead(id), enabled:!!id })
 }
 export function useLeadStats() {
-  return useQuery({ queryKey:['lead-stats'], queryFn:()=>api.getLeadStats(), refetchInterval:30_000 })
+  return useQuery({ queryKey:['lead-stats'], queryFn:()=>api.getLeadStats(), staleTime:0, refetchInterval:10_000, refetchOnWindowFocus:true })
 }
 export function useUpdateLeadStatus() {
   const qc = useQueryClient()
