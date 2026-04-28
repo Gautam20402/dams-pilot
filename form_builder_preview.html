@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DAMS — Form Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --ink:#0d0e12;--ink2:#3a3c47;--ink3:#7a7c88;--ink4:#b0b2bc;
+  --paper:#ffffff;--paper2:#f6f7fb;--paper3:#eef0f6;--paper4:#e3e5ef;
+  --accent:#2a5cff;--accent2:#5c85ff;--accent3:#d9e3ff;--accent4:#eef2ff;
+  --green:#12b76a;--greenbg:#ecfdf5;--red:#f04438;--redbg:#fef3f2;
+  --amber:#f79009;--amberbg:#fffaeb;--purple:#7c3aed;--purplebg:#f5f3ff;
+  --border:#e3e5ef;--border2:#c8cad6;--radius:8px;--radiuslg:12px;
+  --shadow:0 1px 4px rgba(13,14,18,.07);--shadow2:0 4px 16px rgba(13,14,18,.1);
+  --f:'Sora',sans-serif;--m:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f);background:var(--paper2);color:var(--ink);font-size:14px;overflow:hidden;height:100vh}
+
+/* ── top bar ── */
+.topbar{height:52px;background:var(--paper);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;position:sticky;top:0;z-index:100}
+.topbar-brand{font-size:15px;font-weight:600;letter-spacing:-.02em;display:flex;align-items:center;gap:8px}
+.brand-sq{width:26px;height:26px;background:var(--ink);border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.topbar-sep{width:1px;height:18px;background:var(--border)}
+.topbar-form-name{font-size:13px;color:var(--ink2);cursor:pointer;padding:4px 8px;border-radius:var(--radius);border:1px solid transparent;transition:all .15s;font-weight:500}
+.topbar-form-name:hover{border-color:var(--border);background:var(--paper2)}
+.topbar-form-name:focus{outline:none;border-color:var(--accent);background:var(--paper)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:var(--f);transition:all .18s;letter-spacing:-.01em}
+.btn-ghost{background:transparent;color:var(--ink2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--paper2);border-color:var(--border2);color:var(--ink)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#1a4cf0}
+.btn-sm{padding:5px 12px;font-size:11px}
+.dept-select{border:1px solid var(--border);border-radius:var(--radius);padding:6px 10px;font-size:12px;font-family:var(--f);background:var(--paper2);color:var(--ink);outline:none;cursor:pointer;font-weight:500}
+.dept-select:focus{border-color:var(--accent)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+/* ── main layout ── */
+.layout{display:grid;grid-template-columns:240px 1fr 300px;height:calc(100vh - 52px);overflow:hidden}
+
+/* ── field palette ── */
+.palette{background:var(--paper);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.palette-section{padding:14px 14px 8px}
+.palette-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink4);margin-bottom:10px}
+.field-card{background:var(--paper2);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;margin-bottom:5px;cursor:grab;display:flex;align-items:center;gap:10px;user-select:none;transition:all .15s}
+.field-card:hover{background:var(--accent4);border-color:var(--accent3);color:var(--accent)}
+.field-card:active{cursor:grabbing;transform:scale(.98)}
+.field-card.dragging{opacity:.4}
+.field-icon{font-size:14px;width:20px;text-align:center;flex-shrink:0}
+.field-label{font-size:12px;font-weight:500}
+.field-hint{font-size:10px;color:var(--ink4);margin-top:1px}
+
+/* ── canvas ── */
+.canvas{background:var(--paper2);overflow-y:auto;padding:24px}
+.canvas-inner{max-width:640px;margin:0 auto}
+.form-meta{background:var(--paper);border:1px solid var(--border);border-radius:var(--radiuslg);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.form-meta-title{font-size:18px;font-weight:600;letter-spacing:-.02em;margin-bottom:4px}
+.form-meta-sub{font-size:12px;color:var(--ink3)}
+
+.drop-zone{min-height:300px;border:2px dashed var(--border);border-radius:var(--radiuslg);padding:16px;transition:all .2s;position:relative}
+.drop-zone.drag-over{border-color:var(--accent);background:var(--accent4)}
+.drop-zone.has-fields{border-color:transparent;padding:0;background:transparent}
+.drop-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--ink4);pointer-events:none}
+.drop-empty-icon{font-size:32px;margin-bottom:10px;opacity:.5}
+.drop-empty-txt{font-size:13px;text-align:center;line-height:1.5}
+
+/* ── field on canvas ── */
+.canvas-field{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);padding:14px 14px 12px;margin-bottom:8px;position:relative;cursor:default;transition:all .15s;group:true}
+.canvas-field:hover{border-color:var(--accent2);box-shadow:0 0 0 3px var(--accent3)}
+.canvas-field.selected{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent3)}
+.canvas-field.drag-source{opacity:.3}
+.canvas-field.drag-target-above::before{content:'';display:block;height:2px;background:var(--accent);border-radius:2px;margin-bottom:8px}
+.canvas-field.drag-target-below::after{content:'';display:block;height:2px;background:var(--accent);border-radius:2px;margin-top:8px}
+.cf-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.cf-drag{color:var(--ink4);cursor:grab;font-size:16px;padding:0 2px;user-select:none}
+.cf-drag:active{cursor:grabbing}
+.cf-type{font-size:9px;font-weight:600;font-family:var(--m);background:var(--paper3);border:1px solid var(--border);border-radius:4px;padding:2px 6px;color:var(--ink3);text-transform:uppercase}
+.cf-label{font-size:13px;font-weight:500;flex:1}
+.cf-req{font-size:9px;font-weight:600;font-family:var(--m);padding:2px 6px;border-radius:4px}
+.cf-req.req{background:var(--redbg);color:var(--red)}
+.cf-req.opt{background:var(--paper3);color:var(--ink3)}
+.cf-actions{display:flex;gap:4px;margin-left:auto}
+.cf-btn{width:24px;height:24px;border-radius:5px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink4);transition:all .12s}
+.cf-btn:hover{background:var(--paper3);color:var(--ink)}
+.cf-btn.del:hover{background:var(--redbg);color:var(--red)}
+.cf-preview{pointer-events:none}
+.cf-preview .lbl{font-size:11px;color:var(--ink2);margin-bottom:4px;display:flex;align-items:center;gap:4px}
+.cf-preview .req-star{color:var(--red)}
+.cf-preview .mock-inp{height:32px;border:1px solid var(--border);border-radius:var(--radius);background:var(--paper2);display:flex;align-items:center;padding:0 10px;font-size:11px;color:var(--ink4)}
+.cf-preview .mock-ta{height:64px;border:1px solid var(--border);border-radius:var(--radius);background:var(--paper2);display:flex;align-items:flex-start;padding:8px 10px;font-size:11px;color:var(--ink4)}
+.cf-preview .mock-sel{height:32px;border:1px solid var(--border);border-radius:var(--radius);background:var(--paper2);display:flex;align-items:center;padding:0 10px;font-size:11px;color:var(--ink4);justify-content:space-between}
+.cf-preview .pills{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+.cf-preview .pill{padding:4px 10px;border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--ink4)}
+.cf-preview .mock-file{height:56px;border:1.5px dashed var(--border);border-radius:var(--radius);background:var(--paper2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink4);gap:6px}
+.cf-valid{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.cv-tag{font-size:10px;font-family:var(--m);background:var(--amberbg);color:var(--amber);border:1px solid #fde68a;border-radius:4px;padding:1px 6px}
+
+/* ── inspector ── */
+.inspector{background:var(--paper);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.insp-header{padding:14px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600;color:var(--ink2);display:flex;align-items:center;justify-content:space-between}
+.insp-empty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--ink4);padding:24px;text-align:center}
+.insp-empty-icon{font-size:28px;opacity:.4}
+.insp-body{padding:16px;flex:1;overflow-y:auto}
+.insp-group{margin-bottom:18px}
+.insp-group-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink4);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.insp-row{margin-bottom:12px}
+.insp-label{font-size:11px;font-weight:500;color:var(--ink2);margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.insp-input{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:12px;font-family:var(--f);color:var(--ink);background:var(--paper2);outline:none;transition:border .15s}
+.insp-input:focus{border-color:var(--accent);background:var(--paper);box-shadow:0 0 0 3px var(--accent4)}
+.insp-textarea{resize:vertical;min-height:60px;line-height:1.5}
+.insp-select{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:12px;font-family:var(--f);color:var(--ink);background:var(--paper2);outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a7c88' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.insp-select:focus{border-color:var(--accent)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--paper2);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all .15s}
+.toggle-row:hover{border-color:var(--border2)}
+.toggle-lbl{font-size:12px;font-weight:500;color:var(--ink2)}
+.toggle-sub{font-size:10px;color:var(--ink4);margin-top:1px}
+.toggle{width:36px;height:20px;background:var(--paper4);border-radius:10px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:3px;left:3px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on::after{left:19px}
+.valid-row{display:grid;grid-template-columns:1fr auto;gap:6px;margin-bottom:6px;align-items:end}
+.valid-badge{display:flex;align-items:center;justify-content:space-between;background:var(--amberbg);border:1px solid #fde68a;border-radius:var(--radius);padding:5px 8px;margin-bottom:5px;font-size:11px;font-family:var(--m);color:var(--amber)}
+.valid-remove{cursor:pointer;opacity:.6}
+.valid-remove:hover{opacity:1}
+.options-list{display:flex;flex-direction:column;gap:5px;margin-bottom:8px}
+.opt-row{display:flex;gap:5px;align-items:center}
+.opt-input{flex:1;border:1px solid var(--border);border-radius:var(--radius);padding:5px 8px;font-size:11px;font-family:var(--f);outline:none}
+.opt-input:focus{border-color:var(--accent)}
+.opt-del{width:22px;height:22px;border-radius:4px;border:none;background:transparent;cursor:pointer;color:var(--ink4);font-size:13px;display:flex;align-items:center;justify-content:center}
+.opt-del:hover{background:var(--redbg);color:var(--red)}
+.add-opt-btn{font-size:11px;color:var(--accent);cursor:pointer;font-weight:500;padding:2px 0;font-family:var(--f);background:none;border:none}
+.add-opt-btn:hover{color:#1a4cf0}
+
+/* ── preview mode ── */
+.preview-overlay{position:fixed;inset:0;background:rgba(13,14,18,.6);z-index:200;display:none;align-items:center;justify-content:center}
+.preview-overlay.on{display:flex}
+.preview-modal{background:var(--paper);border-radius:16px;width:560px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.2)}
+.preview-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--paper);z-index:1}
+.preview-title{font-size:16px;font-weight:600;letter-spacing:-.02em}
+.preview-close{width:28px;height:28px;border-radius:50%;border:none;background:var(--paper2);cursor:pointer;font-size:16px;color:var(--ink3);display:flex;align-items:center;justify-content:center}
+.preview-close:hover{background:var(--paper3)}
+.preview-body{padding:20px 24px}
+.pf-wrap{margin-bottom:16px}
+.pf-label{font-size:12px;font-weight:500;color:var(--ink2);margin-bottom:5px;display:flex;align-items:center;gap:4px}
+.pf-req{color:var(--red)}
+.pf-hint{font-size:11px;color:var(--ink4);margin-bottom:5px}
+.pf-inp{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px;font-size:13px;font-family:var(--f);outline:none;background:var(--paper);transition:border .15s}
+.pf-inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent4)}
+.pf-ta{resize:vertical;min-height:90px;line-height:1.5}
+.pf-sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%237a7c88' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;cursor:pointer;padding-right:32px}
+.pf-radio{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.pf-rpill{padding:6px 14px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;transition:all .15s;color:var(--ink2)}
+.pf-rpill:hover{border-color:var(--accent2)}
+.pf-rpill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pf-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+.pf-chip{padding:5px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:12px;cursor:pointer;transition:all .15s;color:var(--ink2)}
+.pf-chip:hover{border-color:var(--accent2)}
+.pf-chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.pf-file{border:2px dashed var(--border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.pf-file:hover{border-color:var(--accent);background:var(--accent4)}
+.pf-file input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.pf-file-lbl{font-size:12px;color:var(--ink3)}
+.pf-file-hint{font-size:10px;color:var(--ink4);margin-top:3px}
+.pf-star-row{display:flex;gap:6px;margin-top:2px}
+.pf-star{font-size:24px;cursor:pointer;color:var(--border2);transition:color .1s;line-height:1}
+.pf-star.on,.pf-star:hover{color:var(--amber)}
+.wc-display{font-size:10px;font-family:var(--m);color:var(--ink4);text-align:right;margin-top:3px}
+.preview-submit{margin-top:8px;width:100%;padding:12px;background:var(--ink);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;font-family:var(--f);cursor:pointer;transition:background .15s;letter-spacing:-.01em}
+.preview-submit:hover{background:var(--ink2)}
+
+/* ── schema output ── */
+.schema-modal{position:fixed;inset:0;background:rgba(13,14,18,.7);z-index:200;display:none;align-items:center;justify-content:center}
+.schema-modal.on{display:flex}
+.schema-box{background:var(--ink);border-radius:16px;width:600px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.4)}
+.schema-top{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:space-between}
+.schema-top-title{font-size:13px;font-weight:600;color:#fff}
+.schema-close{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:18px;padding:2px 6px;border-radius:4px}
+.schema-close:hover{background:rgba(255,255,255,.1);color:#fff}
+.schema-pre{font-family:var(--m);font-size:11px;color:#93c5fd;padding:16px 20px;overflow-y:auto;line-height:1.7;flex:1;white-space:pre}
+.copy-bar{padding:10px 16px;border-top:1px solid rgba(255,255,255,.1);display:flex;justify-content:flex-end}
+
+/* ── toast ── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--ink);color:#fff;border-radius:var(--radiuslg);padding:10px 16px;font-size:12px;font-weight:500;z-index:400;transform:translateY(60px);opacity:0;transition:all .25s ease;display:flex;align-items:center;gap:8px}
+.toast.on{transform:translateY(0);opacity:1}
+.toast-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+/* ── scrollbar ── */
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- topbar -->
+<div class="topbar">
+  <div class="topbar-brand"><div class="brand-sq">D</div>Form Builder</div>
+  <div class="topbar-sep"></div>
+  <select class="dept-select" id="deptSelect" onchange="switchDept(this.value)">
+    <option value="cs">Computer Science</option>
+    <option value="business">Business Administration</option>
+    <option value="mechanical">Mechanical Engineering</option>
+    <option value="psychology">Psychology</option>
+    <option value="design">Design & Creative Arts</option>
+    <option value="law">School of Law</option>
+    <option value="education">College of Education</option>
+  </select>
+  <div class="topbar-sep"></div>
+  <input class="topbar-form-name" id="formName" value="MS Computer Science — Fall 2025" style="min-width:220px"/>
+  <div class="topbar-sep"></div>
+  <div class="status-dot" id="saveDot"></div>
+  <span id="saveStatus" style="font-size:11px;color:var(--ink4)">All changes saved</span>
+  <div class="topbar-right">
+    <button class="btn btn-ghost btn-sm" onclick="showSchema()">{ } Schema</button>
+    <button class="btn btn-ghost btn-sm" onclick="showPreview()">Preview ↗</button>
+    <button class="btn btn-accent btn-sm" onclick="publishForm()">Publish form</button>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- ── palette ── -->
+  <div class="palette">
+    <div class="palette-section">
+      <div class="palette-title">Basic fields</div>
+      <div class="field-card" draggable="true" data-type="text" ondragstart="paletteDragStart(event,'text')">
+        <span class="field-icon">T</span>
+        <div><div class="field-label">Short text</div><div class="field-hint">Single-line input</div></div>
+      </div>
+      <div class="field-card" draggable="true" data-type="textarea" ondragstart="paletteDragStart(event,'textarea')">
+        <span class="field-icon">≡</span>
+        <div><div class="field-label">Long text</div><div class="field-hint">Multi-line / essay</div></div>
+      </div>
+      <div class="field-card" draggable="true" data-type="email" ondragstart="paletteDragStart(event,'email')">
+        <span class="field-icon">@</span>
+        <div><div class="field-label">Email</div><div class="field-hint">Validated email</div></div>
+      </div>
+      <div class="field-card" draggable="true" data-type="tel" ondragstart="paletteDragStart(event,'tel')">
+        <span class="field-icon">#</span>
+        <div><div class="field-label">Phone</div><div class="field-hint">Tel format</div></div>
+      </div>
+      <div class="field-card" draggable="true" data-type="number" ondragstart="paletteDragStart(event,'number')">
+        <span class="field-icon">0.9</span>
+        <div><div class="field-label">Number</div><div class="field-hint">Min / max / step</div></div>
+      </div>
+      <div class="field-card" draggable="true" data-type="date" ondragstart="paletteDragStart(event,'date')">
+        <span class="field-icon">□</span>
+        <div><div class="field-label">Date</div><div class="field-hint">Date picker</div></div>
+      </div>
+    </div>
+    <div class="palette-section">
+      <div class="palette-title">Choice fields</div>
+      <div class="field-card" draggable="true" data-type="select" ondragstart="paletteDragStart(event,'select')">
+        <span class="field-icon">▾</span>
+        <div><div class="field-label">Dropdown</div><div class="field-hint">Single select</div></div>
+      </div>
+      <div class="field-card" draggable="true" data-type="radio" ondragstart="paletteDragStart(event,'radio')">
+        <span class="field-icon">◎</span>
+        <div><div class="field-label">Radio group</div><div class="field-hint">Pick one option</div></div>
+      </div>
+      <div class="field-card" draggable="true" data-type="checkbox" ondragstart="paletteDragStart(event,'checkbox')">
+        <span class="field-icon">☑</span>
+        <div><div class="field-label">Multi-select</div><div class="field-hint">Pick many options</div></div>
+      </div>
+    </div>
+    <div class="palette-section">
+      <div class="palette-title">Special fields</div>
+      <div class="field-card" draggable="true" data-type="file" ondragstart="paletteDragStart(event,'file')">
+        <span class="field-icon">↑</span>
+        <div><div class="field-label">File upload</div><div class="field-hint">PDF, DOC, images</div></div>
+      </div>
+      <div class="field-card" draggable="true" data-type="url" ondragstart="paletteDragStart(event,'url')">
+        <span class="field-icon">⊕</span>
+        <div><div class="field-label">URL / link</div><div class="field-hint">Validated URL</div></div>
+      </div>
+      <div class="field-card" draggable="true" data-type="rating" ondragstart="paletteDragStart(event,'rating')">
+        <span class="field-icon">★</span>
+        <div><div class="field-label">Rating / stars</div><div class="field-hint">1–5 star scale</div></div>
+      </div>
+      <div class="field-card" draggable="true" data-type="heading" ondragstart="paletteDragStart(event,'heading')">
+        <span class="field-icon">H</span>
+        <div><div class="field-label">Section heading</div><div class="field-hint">Divider / label</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── canvas ── -->
+  <div class="canvas">
+    <div class="canvas-inner">
+      <div class="form-meta">
+        <div class="form-meta-title" id="canvasTitle">MS Computer Science — Fall 2025</div>
+        <div class="form-meta-sub" id="canvasDept">Department: Computer Science · <span id="fieldCount">0</span> fields</div>
+      </div>
+      <div class="drop-zone" id="dropZone"
+        ondragover="canvasDragOver(event)"
+        ondragleave="canvasDragLeave(event)"
+        ondrop="canvasDrop(event)">
+        <div class="drop-empty" id="dropEmpty">
+          <div class="drop-empty-icon">⊕</div>
+          <div class="drop-empty-txt">Drag fields from the left panel<br/>or click a field type to add it</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── inspector ── -->
+  <div class="inspector" id="inspector">
+    <div class="insp-header">
+      Field properties
+      <span style="font-size:10px;font-weight:400;color:var(--ink4)">Click a field to edit</span>
+    </div>
+    <div class="insp-empty" id="inspEmpty">
+      <div class="insp-empty-icon">◎</div>
+      <div style="font-size:12px">Select a field on the canvas<br/>to configure its properties</div>
+    </div>
+    <div class="insp-body" id="inspBody" style="display:none"></div>
+  </div>
+</div>
+
+<!-- preview overlay -->
+<div class="preview-overlay" id="previewOverlay" onclick="hidePreview(event)">
+  <div class="preview-modal" onclick="event.stopPropagation()">
+    <div class="preview-header">
+      <div class="preview-title" id="previewTitle">Form preview</div>
+      <button class="preview-close" onclick="hidePreview()">✕</button>
+    </div>
+    <div class="preview-body" id="previewBody"></div>
+  </div>
+</div>
+
+<!-- schema modal -->
+<div class="schema-modal" id="schemaModal" onclick="hideSchema(event)">
+  <div class="schema-box" onclick="event.stopPropagation()">
+    <div class="schema-top">
+      <div class="schema-top-title">JSON Schema — ready to save to Postgres</div>
+      <button class="schema-close" onclick="hideSchema()">✕</button>
+    </div>
+    <pre class="schema-pre" id="schemaPre"></pre>
+    <div class="copy-bar"><button class="btn btn-ghost btn-sm" style="color:#93c5fd;border-color:rgba(147,197,253,.3)" onclick="copySchema()">Copy JSON</button></div>
+  </div>
+</div>
+
+<!-- toast -->
+<div class="toast" id="toast"><div class="toast-dot"></div><span id="toastMsg"></span></div>
+
+<script>
+// ─── state ────────────────────────────────────────────────────────────────────
+let fields = []
+let selectedId = null
+let dragSourceId = null   // canvas field being dragged
+let paletteDragType = null // new field from palette
+let fieldCounter = 0
+let currentDept = 'cs'
+
+const DEPT_LABELS = {
+  cs:'Computer Science', business:'Business Administration',
+  mechanical:'Mechanical Engineering', psychology:'Psychology',
+  design:'Design & Creative Arts', law:'School of Law', education:'College of Education',
+}
+
+const DEPT_PRESETS = {
+  cs:[
+    {type:'text',   label:'First name',    key:'first_name',  required:true,  validations:{minLength:2}},
+    {type:'text',   label:'Last name',     key:'last_name',   required:true,  validations:{minLength:2}},
+    {type:'email',  label:'Email address', key:'email',       required:true,  validations:{}},
+    {type:'tel',    label:'Phone number',  key:'phone',       required:true,  validations:{}},
+    {type:'number', label:'GPA (4.0 scale)',key:'gpa',        required:true,  validations:{min:0,max:4}},
+    {type:'select', label:'Degree earned', key:'degree',      required:true,  options:['Bachelor of Science (BS)','Bachelor of Arts (BA)','Bachelor of Engineering (BEng)','Currently Enrolled'],validations:{}},
+    {type:'number', label:'GRE score',     key:'gre_score',   required:false, validations:{min:260,max:340}},
+    {type:'checkbox',label:'Specialization',key:'specialization',required:true,options:['AI & Machine Learning','Data Science','Systems','Cybersecurity','HCI'],validations:{}},
+    {type:'textarea',label:'Statement of purpose',key:'sop', required:true,  validations:{minLength:200,maxLength:2000}},
+    {type:'file',   label:'Resume / CV',   key:'resume',      required:true,  validations:{accept:'.pdf,.doc,.docx',maxSizeMB:10}},
+    {type:'file',   label:'Transcript',    key:'transcript',  required:true,  validations:{accept:'.pdf',maxSizeMB:10}},
+  ],
+  business:[
+    {type:'text',   label:'First name',    key:'first_name',  required:true,  validations:{minLength:2}},
+    {type:'text',   label:'Last name',     key:'last_name',   required:true,  validations:{minLength:2}},
+    {type:'email',  label:'Email address', key:'email',       required:true,  validations:{}},
+    {type:'number', label:'Work experience (years)',key:'work_exp',required:true,validations:{min:0,max:50}},
+    {type:'text',   label:'Current employer',key:'employer',  required:true,  validations:{minLength:2}},
+    {type:'text',   label:'Job title',     key:'job_title',   required:true,  validations:{}},
+    {type:'number', label:'GMAT score',    key:'gmat',        required:false, validations:{min:200,max:800}},
+    {type:'textarea',label:'Leadership essay',key:'leadership_essay',required:true,validations:{minLength:300,maxLength:1500}},
+    {type:'file',   label:'Resume / CV',   key:'resume',      required:true,  validations:{accept:'.pdf,.doc,.docx',maxSizeMB:10}},
+  ],
+  mechanical:[
+    {type:'text',   label:'First name',    key:'first_name',  required:true,  validations:{}},
+    {type:'text',   label:'Last name',     key:'last_name',   required:true,  validations:{}},
+    {type:'email',  label:'Email address', key:'email',       required:true,  validations:{}},
+    {type:'number', label:'GPA',           key:'gpa',         required:true,  validations:{min:0,max:4}},
+    {type:'checkbox',label:'Core subjects',key:'core_subjects',required:false,options:['Thermodynamics','Fluid Mechanics','Heat Transfer','Solid Mechanics','Control Systems'],validations:{}},
+    {type:'textarea',label:'Research interests',key:'research',required:false,validations:{maxLength:500}},
+    {type:'textarea',label:'Statement of purpose',key:'sop',  required:true,  validations:{minLength:200}},
+    {type:'file',   label:'Resume / CV',   key:'resume',      required:true,  validations:{accept:'.pdf,.doc,.docx',maxSizeMB:10}},
+  ],
+  psychology:[
+    {type:'text',   label:'First name',    key:'first_name',  required:true,  validations:{}},
+    {type:'text',   label:'Last name',     key:'last_name',   required:true,  validations:{}},
+    {type:'email',  label:'Email address', key:'email',       required:true,  validations:{}},
+    {type:'radio',  label:'Area of interest',key:'psych_area',required:true,  options:['Clinical Psychology','Cognitive Psychology','Behavioral Psychology','Developmental Psychology'],validations:{}},
+    {type:'textarea',label:'Research experience',key:'research_exp',required:true,validations:{minLength:150}},
+    {type:'textarea',label:'Statement of purpose',key:'sop',  required:true,  validations:{minLength:300}},
+    {type:'file',   label:'Writing sample',key:'writing_sample',required:true,validations:{accept:'.pdf,.doc,.docx',maxSizeMB:20}},
+    {type:'text',   label:'Preferred faculty',key:'preferred_faculty',required:false,validations:{}},
+  ],
+  design:[
+    {type:'text',   label:'First name',    key:'first_name',  required:true,  validations:{}},
+    {type:'text',   label:'Last name',     key:'last_name',   required:true,  validations:{}},
+    {type:'email',  label:'Email address', key:'email',       required:true,  validations:{}},
+    {type:'radio',  label:'Preferred domain',key:'design_domain',required:true,options:['UI/UX Design','Architecture','Product Design','Graphic Design','Industrial Design'],validations:{}},
+    {type:'checkbox',label:'Software skills',key:'software_skills',required:true,options:['Figma','AutoCAD','Photoshop','Illustrator','Sketch','Blender','After Effects'],validations:{}},
+    {type:'textarea',label:'Design statement',key:'design_statement',required:true,validations:{minLength:200}},
+    {type:'file',   label:'Portfolio',     key:'portfolio',   required:true,  validations:{accept:'.pdf,.zip',maxSizeMB:50}},
+  ],
+  law:[
+    {type:'text',   label:'First name',    key:'first_name',  required:true,  validations:{}},
+    {type:'text',   label:'Last name',     key:'last_name',   required:true,  validations:{}},
+    {type:'email',  label:'Email address', key:'email',       required:true,  validations:{}},
+    {type:'number', label:'LSAT score',    key:'lsat',        required:true,  validations:{min:120,max:180}},
+    {type:'number', label:'Undergraduate GPA',key:'gpa',      required:true,  validations:{min:0,max:4}},
+    {type:'textarea',label:'Personal statement',key:'personal_statement',required:true,validations:{minLength:300}},
+    {type:'file',   label:'Resume / CV',   key:'resume',      required:true,  validations:{accept:'.pdf,.doc,.docx',maxSizeMB:10}},
+  ],
+  education:[
+    {type:'text',   label:'First name',    key:'first_name',  required:true,  validations:{}},
+    {type:'text',   label:'Last name',     key:'last_name',   required:true,  validations:{}},
+    {type:'email',  label:'Email address', key:'email',       required:true,  validations:{}},
+    {type:'number', label:'Teaching experience (years)',key:'teaching_exp',required:false,validations:{min:0,max:50}},
+    {type:'textarea',label:'Teaching philosophy',key:'teaching_philosophy',required:true,validations:{minLength:200}},
+    {type:'file',   label:'Resume / CV',   key:'resume',      required:true,  validations:{accept:'.pdf,.doc,.docx',maxSizeMB:10}},
+  ],
+}
+
+// ─── init ──────────────────────────────────────────────────────────────────────
+function init() {
+  loadDept('cs')
+}
+
+function switchDept(dept) {
+  currentDept = dept
+  document.getElementById('canvasDept').innerHTML =
+    'Department: ' + DEPT_LABELS[dept] + ' · <span id="fieldCount">' + fields.length + '</span> fields'
+  const name = getDeptFormName(dept)
+  document.getElementById('formName').value = name
+  document.getElementById('canvasTitle').textContent = name
+  loadDept(dept)
+}
+
+function getDeptFormName(dept) {
+  const map = {
+    cs:'MS Computer Science — Fall 2025', business:'MBA Full-time — Fall 2025',
+    mechanical:'MS Mechanical Engineering — Fall 2025', psychology:'MS Psychology — Fall 2025',
+    design:'MFA Design — Fall 2025', law:'Juris Doctor (JD) — Fall 2025',
+    education:'MEd Curriculum & Instruction — Fall 2025',
+  }
+  return map[dept] || dept
+}
+
+function loadDept(dept) {
+  fields = (DEPT_PRESETS[dept] || []).map((f, i) => ({
+    id: 'f_' + (++fieldCounter),
+    type: f.type,
+    label: f.label,
+    key: f.key,
+    required: f.required,
+    placeholder: f.placeholder || '',
+    hint: f.hint || '',
+    options: f.options ? [...f.options] : [],
+    validations: { ...(f.validations || {}) },
+  }))
+  selectedId = null
+  renderCanvas()
+  showInspectorEmpty()
+  updateFieldCount()
+  triggerAutosave()
+}
+
+// ─── canvas render ─────────────────────────────────────────────────────────────
+function renderCanvas() {
+  const zone = document.getElementById('dropZone')
+  zone.innerHTML = ''
+  zone.classList.toggle('has-fields', fields.length > 0)
+  if (!fields.length) {
+    zone.innerHTML = '<div class="drop-empty" id="dropEmpty"><div class="drop-empty-icon">⊕</div><div class="drop-empty-txt">Drag fields from the left panel<br/>or click a field type to add it</div></div>'
+    return
+  }
+  fields.forEach(f => zone.appendChild(makeCanvasField(f)))
+}
+
+function makeCanvasField(f) {
+  const el = document.createElement('div')
+  el.className = 'canvas-field' + (f.id === selectedId ? ' selected' : '')
+  el.id = 'cf_' + f.id
+  el.draggable = true
+  el.onclick = (e) => { e.stopPropagation(); selectField(f.id) }
+  el.ondragstart = (e) => canvasFieldDragStart(e, f.id)
+  el.ondragover  = (e) => canvasFieldDragOver(e, f.id)
+  el.ondragleave = () => canvasFieldDragLeave(f.id)
+  el.ondrop      = (e) => canvasFieldDrop(e, f.id)
+  el.ondragend   = () => canvasFieldDragEnd()
+
+  const validTags = buildValidTags(f)
+  el.innerHTML = `
+    <div class="cf-top">
+      <span class="cf-drag" draggable="false">⠿</span>
+      <span class="cf-type">${f.type}</span>
+      <span class="cf-label">${f.label || 'Untitled field'}</span>
+      <span class="cf-req ${f.required ? 'req' : 'opt'}">${f.required ? 'required' : 'optional'}</span>
+      <div class="cf-actions">
+        <button class="cf-btn" onclick="event.stopPropagation();duplicateField('${f.id}')" title="Duplicate">⧉</button>
+        <button class="cf-btn del" onclick="event.stopPropagation();deleteField('${f.id}')" title="Delete">✕</button>
+      </div>
+    </div>
+    <div class="cf-preview">${renderFieldPreview(f)}</div>
+    ${validTags ? '<div class="cf-valid">' + validTags + '</div>' : ''}
+  `
+  return el
+}
+
+function buildValidTags(f) {
+  const v = f.validations || {}
+  const tags = []
+  if (v.minLength) tags.push(`<span class="cv-tag">min ${v.minLength} chars</span>`)
+  if (v.maxLength) tags.push(`<span class="cv-tag">max ${v.maxLength} chars</span>`)
+  if (v.min !== undefined && f.type !== 'rating') tags.push(`<span class="cv-tag">min ${v.min}</span>`)
+  if (v.max !== undefined && f.type !== 'rating') tags.push(`<span class="cv-tag">max ${v.max}</span>`)
+  if (v.accept) tags.push(`<span class="cv-tag">${v.accept}</span>`)
+  if (v.maxSizeMB) tags.push(`<span class="cv-tag">≤${v.maxSizeMB}MB</span>`)
+  if (v.pattern) tags.push(`<span class="cv-tag">regex</span>`)
+  return tags.join('')
+}
+
+function renderFieldPreview(f) {
+  const lbl = `<div class="lbl">${f.label||'Untitled'} ${f.required ? '<span class="req-star">*</span>' : ''}</div>`
+  const hint = f.hint ? `<div style="font-size:10px;color:var(--ink4);margin-bottom:4px">${f.hint}</div>` : ''
+  switch (f.type) {
+    case 'text': case 'email': case 'tel': case 'url':
+      return lbl + hint + `<div class="mock-inp">${f.placeholder || 'Type here…'}</div>`
+    case 'number':
+      return lbl + hint + `<div class="mock-inp">${f.placeholder || '0'}</div>`
+    case 'date':
+      return lbl + `<div class="mock-inp">MM / DD / YYYY</div>`
+    case 'textarea':
+      return lbl + hint + `<div class="mock-ta">${f.placeholder || 'Write your response…'}</div>`
+    case 'select':
+      return lbl + `<div class="mock-sel"><span>${f.options?.[0] || 'Select an option…'}</span><span>▾</span></div>`
+    case 'radio':
+      return lbl + `<div class="pills">${(f.options||['Option A','Option B']).slice(0,4).map(o=>`<div class="pill">${o}</div>`).join('')}</div>`
+    case 'checkbox':
+      return lbl + `<div class="pills">${(f.options||['Option A','Option B']).slice(0,4).map(o=>`<div class="pill">${o}</div>`).join('')}</div>`
+    case 'file':
+      return lbl + hint + `<div class="mock-file">↑ Click or drag to upload ${f.validations?.accept || ''}</div>`
+    case 'url':
+      return lbl + `<div class="mock-inp">https://</div>`
+    case 'rating':
+      return lbl + `<div style="display:flex;gap:4px;margin-top:4px">★★★★★</div>`
+    case 'heading':
+      return `<div style="font-size:14px;font-weight:600;color:var(--ink);padding:4px 0;border-bottom:2px solid var(--border)">${f.label || 'Section heading'}</div>`
+    default:
+      return lbl + `<div class="mock-inp">Input field</div>`
+  }
+}
+
+// ─── field selection ───────────────────────────────────────────────────────────
+function selectField(id) {
+  selectedId = id
+  document.querySelectorAll('.canvas-field').forEach(el => el.classList.remove('selected'))
+  document.getElementById('cf_' + id)?.classList.add('selected')
+  renderInspector()
+}
+
+function deselectAll() {
+  selectedId = null
+  document.querySelectorAll('.canvas-field').forEach(el => el.classList.remove('selected'))
+  showInspectorEmpty()
+}
+
+document.querySelector('.canvas').addEventListener('click', (e) => {
+  if (!e.target.closest('.canvas-field')) deselectAll()
+})
+
+// ─── inspector ─────────────────────────────────────────────────────────────────
+function showInspectorEmpty() {
+  document.getElementById('inspEmpty').style.display = 'flex'
+  document.getElementById('inspBody').style.display = 'none'
+}
+
+function renderInspector() {
+  const f = fields.find(x => x.id === selectedId)
+  if (!f) return showInspectorEmpty()
+  document.getElementById('inspEmpty').style.display = 'none'
+  const body = document.getElementById('inspBody')
+  body.style.display = 'block'
+
+  const hasOptions = ['select','radio','checkbox'].includes(f.type)
+  const hasLength  = ['text','textarea','email','url'].includes(f.type)
+  const hasNumber  = f.type === 'number'
+  const isFile     = f.type === 'file'
+  const isHeading  = f.type === 'heading'
+
+  body.innerHTML = `
+    <div class="insp-group">
+      <div class="insp-group-title">Field settings</div>
+      <div class="insp-row">
+        <div class="insp-label">Label</div>
+        <input class="insp-input" id="ip_label" value="${esc(f.label)}" oninput="updateField('label',this.value)" placeholder="Field label"/>
+      </div>
+      <div class="insp-row">
+        <div class="insp-label">Field key <span style="font-size:10px;color:var(--ink4);font-family:var(--m)">(API key)</span></div>
+        <input class="insp-input" id="ip_key" value="${esc(f.key)}" oninput="updateField('key',slugify(this.value))" placeholder="field_key" style="font-family:var(--m);font-size:11px"/>
+      </div>
+      ${!isHeading ? `
+      <div class="insp-row">
+        <div class="insp-label">Placeholder / hint text</div>
+        <input class="insp-input" id="ip_ph" value="${esc(f.placeholder)}" oninput="updateField('placeholder',this.value)" placeholder="e.g. Type here…"/>
+      </div>
+      <div class="insp-row">
+        <div class="insp-label">Helper text (below field)</div>
+        <input class="insp-input" id="ip_hint" value="${esc(f.hint)}" oninput="updateField('hint',this.value)" placeholder="Optional helper text"/>
+      </div>
+      <div class="insp-row">
+        <div class="toggle-row" onclick="toggleRequired()">
+          <div><div class="toggle-lbl">Required field</div><div class="toggle-sub">Applicant must fill this</div></div>
+          <div class="toggle ${f.required ? 'on' : ''}" id="tog_req"></div>
+        </div>
+      </div>
+      ` : ''}
+    </div>
+
+    ${hasOptions ? `
+    <div class="insp-group">
+      <div class="insp-group-title">Options</div>
+      <div class="options-list" id="optsList">${renderOptionsList(f)}</div>
+      <button class="add-opt-btn" onclick="addOption()">+ Add option</button>
+    </div>` : ''}
+
+    ${!isHeading ? `
+    <div class="insp-group">
+      <div class="insp-group-title">Validation rules</div>
+      ${hasLength ? `
+      <div class="valid-row">
+        <div><div class="insp-label">Min length</div><input class="insp-input" type="number" value="${f.validations.minLength||''}" oninput="updateValidation('minLength',this.value?parseInt(this.value):undefined)" placeholder="e.g. 10"/></div>
+        <div><div class="insp-label">Max length</div><input class="insp-input" type="number" value="${f.validations.maxLength||''}" oninput="updateValidation('maxLength',this.value?parseInt(this.value):undefined)" placeholder="e.g. 500"/></div>
+      </div>` : ''}
+      ${hasNumber ? `
+      <div class="valid-row">
+        <div><div class="insp-label">Minimum value</div><input class="insp-input" type="number" value="${f.validations.min??''}" oninput="updateValidation('min',this.value!==''?parseFloat(this.value):undefined)" placeholder="e.g. 0"/></div>
+        <div><div class="insp-label">Maximum value</div><input class="insp-input" type="number" value="${f.validations.max??''}" oninput="updateValidation('max',this.value!==''?parseFloat(this.value):undefined)" placeholder="e.g. 4"/></div>
+      </div>
+      <div class="insp-row"><div class="insp-label">Step</div><input class="insp-input" type="number" value="${f.validations.step||''}" oninput="updateValidation('step',this.value?parseFloat(this.value):undefined)" placeholder="e.g. 0.01"/></div>
+      ` : ''}
+      ${isFile ? `
+      <div class="insp-row">
+        <div class="insp-label">Accepted file types</div>
+        <input class="insp-input" value="${f.validations.accept||''}" oninput="updateValidation('accept',this.value)" placeholder=".pdf,.doc,.docx"/>
+      </div>
+      <div class="insp-row">
+        <div class="insp-label">Max file size (MB)</div>
+        <input class="insp-input" type="number" value="${f.validations.maxSizeMB||''}" oninput="updateValidation('maxSizeMB',this.value?parseInt(this.value):undefined)" placeholder="10"/>
+      </div>` : ''}
+      ${f.type === 'text' || f.type === 'email' ? `
+      <div class="insp-row">
+        <div class="insp-label">Regex pattern <span style="font-size:10px;color:var(--ink4)">(optional)</span></div>
+        <input class="insp-input" value="${esc(f.validations.pattern||'')}" oninput="updateValidation('pattern',this.value||undefined)" placeholder="e.g. ^[A-Z].*" style="font-family:var(--m);font-size:11px"/>
+      </div>` : ''}
+    </div>` : ''}
+
+    <div class="insp-group">
+      <div class="insp-group-title">Actions</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="duplicateField('${f.id}')">Duplicate</button>
+        <button class="btn btn-ghost btn-sm" style="flex:1;color:var(--red);border-color:var(--red)" onclick="deleteField('${f.id}')">Delete</button>
+      </div>
+    </div>
+  `
+}
+
+function renderOptionsList(f) {
+  return (f.options || []).map((opt, i) => `
+    <div class="opt-row" id="orow_${i}">
+      <input class="opt-input" value="${esc(opt)}" oninput="updateOption(${i},this.value)" placeholder="Option ${i+1}"/>
+      <button class="opt-del" onclick="removeOption(${i})">✕</button>
+    </div>`).join('')
+}
+
+function addOption() {
+  const f = fields.find(x => x.id === selectedId)
+  if (!f) return
+  f.options = [...(f.options||[]), 'New option']
+  document.getElementById('optsList').innerHTML = renderOptionsList(f)
+  refreshCanvasField()
+}
+
+function removeOption(i) {
+  const f = fields.find(x => x.id === selectedId)
+  if (!f || !f.options) return
+  f.options.splice(i, 1)
+  document.getElementById('optsList').innerHTML = renderOptionsList(f)
+  refreshCanvasField()
+}
+
+function updateOption(i, val) {
+  const f = fields.find(x => x.id === selectedId)
+  if (!f || !f.options) return
+  f.options[i] = val
+  refreshCanvasField()
+  triggerAutosave()
+}
+
+// ─── field mutations ───────────────────────────────────────────────────────────
+function updateField(key, val) {
+  const f = fields.find(x => x.id === selectedId)
+  if (!f) return
+  f[key] = val
+  if (key === 'label' || key === 'required' || key === 'options') refreshCanvasField()
+  else if (key === 'placeholder' || key === 'hint') refreshCanvasField()
+  triggerAutosave()
+}
+
+function updateValidation(key, val) {
+  const f = fields.find(x => x.id === selectedId)
+  if (!f) return
+  if (val === undefined) delete f.validations[key]
+  else f.validations[key] = val
+  refreshCanvasField()
+  triggerAutosave()
+}
+
+function toggleRequired() {
+  const f = fields.find(x => x.id === selectedId)
+  if (!f) return
+  f.required = !f.required
+  document.getElementById('tog_req')?.classList.toggle('on', f.required)
+  refreshCanvasField()
+  triggerAutosave()
+}
+
+function refreshCanvasField() {
+  const f = fields.find(x => x.id === selectedId)
+  if (!f) return
+  const el = document.getElementById('cf_' + f.id)
+  if (!el) return
+  const replacement = makeCanvasField(f)
+  el.replaceWith(replacement)
+}
+
+function deleteField(id) {
+  fields = fields.filter(f => f.id !== id)
+  if (selectedId === id) { selectedId = null; showInspectorEmpty() }
+  renderCanvas()
+  updateFieldCount()
+  triggerAutosave()
+}
+
+function duplicateField(id) {
+  const f = fields.find(x => x.id === id)
+  if (!f) return
+  const copy = JSON.parse(JSON.stringify(f))
+  copy.id = 'f_' + (++fieldCounter)
+  copy.label = f.label + ' (copy)'
+  copy.key = f.key + '_copy'
+  const idx = fields.findIndex(x => x.id === id)
+  fields.splice(idx + 1, 0, copy)
+  renderCanvas()
+  selectField(copy.id)
+  updateFieldCount()
+  triggerAutosave()
+  toast('Field duplicated')
+}
+
+function updateFieldCount() {
+  const el = document.getElementById('fieldCount')
+  if (el) el.textContent = fields.length
+}
+
+// ─── drag from palette ─────────────────────────────────────────────────────────
+function paletteDragStart(e, type) {
+  paletteDragType = type
+  dragSourceId = null
+  e.dataTransfer.effectAllowed = 'copy'
+}
+
+// ─── drag on canvas (reorder) ──────────────────────────────────────────────────
+function canvasFieldDragStart(e, id) {
+  dragSourceId = id
+  paletteDragType = null
+  e.dataTransfer.effectAllowed = 'move'
+  setTimeout(() => document.getElementById('cf_' + id)?.classList.add('drag-source'), 0)
+}
+
+function canvasFieldDragOver(e, id) {
+  e.preventDefault()
+  e.stopPropagation()
+  document.querySelectorAll('.canvas-field').forEach(el => el.classList.remove('drag-target-above','drag-target-below'))
+  if (dragSourceId && dragSourceId !== id) {
+    document.getElementById('cf_' + id)?.classList.add('drag-target-above')
+  } else if (paletteDragType) {
+    document.getElementById('cf_' + id)?.classList.add('drag-target-above')
+  }
+}
+
+function canvasFieldDragLeave(id) {
+  document.getElementById('cf_' + id)?.classList.remove('drag-target-above','drag-target-below')
+}
+
+function canvasFieldDrop(e, targetId) {
+  e.preventDefault(); e.stopPropagation()
+  document.querySelectorAll('.canvas-field').forEach(el => el.classList.remove('drag-target-above','drag-target-below'))
+  if (paletteDragType) {
+    const newField = createField(paletteDragType)
+    const targetIdx = fields.findIndex(f => f.id === targetId)
+    fields.splice(targetIdx, 0, newField)
+    renderCanvas()
+    selectField(newField.id)
+  } else if (dragSourceId && dragSourceId !== targetId) {
+    const srcIdx = fields.findIndex(f => f.id === dragSourceId)
+    const tgtIdx = fields.findIndex(f => f.id === targetId)
+    const [moved] = fields.splice(srcIdx, 1)
+    fields.splice(tgtIdx, 0, moved)
+    renderCanvas()
+    if (selectedId) { const el = document.getElementById('cf_' + selectedId); if (el) el.classList.add('selected') }
+  }
+  updateFieldCount()
+  triggerAutosave()
+}
+
+function canvasFieldDragEnd() {
+  dragSourceId = null
+  document.querySelectorAll('.canvas-field').forEach(el => {
+    el.classList.remove('drag-source','drag-target-above','drag-target-below')
+  })
+}
+
+// ─── drop zone (empty canvas) ──────────────────────────────────────────────────
+function canvasDragOver(e) {
+  e.preventDefault()
+  document.getElementById('dropZone').classList.add('drag-over')
+}
+
+function canvasDragLeave(e) {
+  if (!e.relatedTarget?.closest('#dropZone')) {
+    document.getElementById('dropZone').classList.remove('drag-over')
+  }
+}
+
+function canvasDrop(e) {
+  e.preventDefault()
+  document.getElementById('dropZone').classList.remove('drag-over')
+  if (paletteDragType) {
+    const f = createField(paletteDragType)
+    fields.push(f)
+    renderCanvas()
+    selectField(f.id)
+    updateFieldCount()
+    triggerAutosave()
+  }
+}
+
+// ─── field factory ─────────────────────────────────────────────────────────────
+function createField(type) {
+  const defaults = {
+    text:     {label:'Short text field', key:'text_field',     placeholder:'Enter text…'},
+    textarea: {label:'Long text / essay',key:'long_text',      placeholder:'Write your response…'},
+    email:    {label:'Email address',    key:'email',          placeholder:'you@email.com'},
+    tel:      {label:'Phone number',     key:'phone',          placeholder:'+1 (555) 000-0000'},
+    number:   {label:'Number',           key:'number_field',   placeholder:'0'},
+    date:     {label:'Date',             key:'date_field',     placeholder:''},
+    select:   {label:'Dropdown',         key:'dropdown_field', options:['Option 1','Option 2','Option 3']},
+    radio:    {label:'Radio group',      key:'radio_field',    options:['Option A','Option B','Option C']},
+    checkbox: {label:'Multi-select',     key:'multiselect',    options:['Option A','Option B','Option C']},
+    file:     {label:'File upload',      key:'file_upload',    validations:{accept:'.pdf,.doc,.docx',maxSizeMB:10}},
+    url:      {label:'URL / Website',    key:'url_field',      placeholder:'https://'},
+    rating:   {label:'Rating',           key:'rating_field',   placeholder:''},
+    heading:  {label:'Section heading',  key:'heading',        placeholder:''},
+  }
+  const d = defaults[type] || {label:'Field',key:'field'}
+  return {
+    id: 'f_' + (++fieldCounter),
+    type, required: false,
+    label: d.label, key: d.key + '_' + fieldCounter,
+    placeholder: d.placeholder || '',
+    hint: '',
+    options: d.options ? [...d.options] : [],
+    validations: d.validations ? {...d.validations} : {},
+  }
+}
+
+// ─── palette click-to-add ──────────────────────────────────────────────────────
+document.querySelectorAll('.field-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const type = card.dataset.type
+    const f = createField(type)
+    fields.push(f)
+    renderCanvas()
+    selectField(f.id)
+    updateFieldCount()
+    triggerAutosave()
+    toast(card.querySelector('.field-label').textContent + ' added')
+  })
+})
+
+// ─── autosave ──────────────────────────────────────────────────────────────────
+let saveDebounce
+function triggerAutosave() {
+  document.getElementById('saveDot').style.background = 'var(--amber)'
+  document.getElementById('saveStatus').textContent = 'Saving…'
+  clearTimeout(saveDebounce)
+  saveDebounce = setTimeout(() => {
+    document.getElementById('saveDot').style.background = 'var(--green)'
+    document.getElementById('saveStatus').textContent = 'All changes saved'
+  }, 900)
+}
+
+document.getElementById('formName').addEventListener('input', function() {
+  document.getElementById('canvasTitle').textContent = this.value
+  triggerAutosave()
+})
+
+// ─── preview ───────────────────────────────────────────────────────────────────
+function showPreview() {
+  const overlay = document.getElementById('previewOverlay')
+  document.getElementById('previewTitle').textContent = document.getElementById('formName').value
+  const body = document.getElementById('previewBody')
+  body.innerHTML = fields.map(f => renderPreviewField(f)).join('') +
+    `<button class="preview-submit" onclick="previewSubmit()">Submit application →</button>`
+  overlay.classList.add('on')
+}
+
+function renderPreviewField(f) {
+  if (f.type === 'heading') return `<div style="font-size:15px;font-weight:600;color:var(--ink);padding:6px 0 4px;border-bottom:2px solid var(--border);margin:16px 0 12px">${f.label}</div>`
+  const req = f.required ? '<span class="pf-req">*</span>' : ''
+  const hint = f.hint ? `<div class="pf-hint">${f.hint}</div>` : ''
+  let input = ''
+  switch(f.type) {
+    case 'text': case 'email': case 'tel': case 'url':
+      input = `<input class="pf-inp" type="${f.type}" placeholder="${esc(f.placeholder)}" ${f.required?'required':''} />`; break
+    case 'number':
+      input = `<input class="pf-inp" type="number" placeholder="${f.placeholder||'0'}" min="${f.validations.min??''}" max="${f.validations.max??''}" step="${f.validations.step||''}" ${f.required?'required':''} />`; break
+    case 'date':
+      input = `<input class="pf-inp" type="date" ${f.required?'required':''} />`; break
+    case 'textarea':
+      input = `<textarea class="pf-inp pf-ta" placeholder="${esc(f.placeholder)}" ${f.required?'required':''} oninput="updateWC(this)"></textarea><div class="wc-display" id="wc_${f.id}">0 words</div>`; break
+    case 'select':
+      input = `<select class="pf-inp pf-sel" ${f.required?'required':''}><option value="">Select an option</option>${(f.options||[]).map(o=>`<option>${o}</option>`).join('')}</select>`; break
+    case 'radio':
+      input = `<div class="pf-radio">${(f.options||[]).map(o=>`<div class="pf-rpill" onclick="toggleRpill(this)">${o}</div>`).join('')}</div>`; break
+    case 'checkbox':
+      input = `<div class="pf-chips">${(f.options||[]).map(o=>`<div class="pf-chip" onclick="this.classList.toggle('on')">${o}</div>`).join('')}</div>`; break
+    case 'file':
+      input = `<div class="pf-file"><input type="file" accept="${f.validations.accept||''}"/><div class="pf-file-lbl">Click or drag to upload</div><div class="pf-file-hint">${f.validations.accept||''} · max ${f.validations.maxSizeMB||10}MB</div></div>`; break
+    case 'url':
+      input = `<input class="pf-inp" type="url" placeholder="https://" />`; break
+    case 'rating':
+      input = `<div class="pf-star-row">${[1,2,3,4,5].map(n=>`<span class="pf-star" onclick="setRating(this,${n})">★</span>`).join('')}</div>`; break
+    default:
+      input = `<input class="pf-inp" type="text" placeholder="${esc(f.placeholder)}" />`
+  }
+  return `<div class="pf-wrap"><label class="pf-label">${f.label} ${req}</label>${hint}${input}</div>`
+}
+
+function updateWC(el) {
+  const id = el.closest('.pf-wrap')?.querySelector('.wc-display')?.id
+  if (!id) return
+  const words = el.value.trim().split(/\s+/).filter(Boolean).length
+  document.getElementById(id).textContent = words + ' word' + (words!==1?'s':'')
+}
+function toggleRpill(el) { el.closest('.pf-radio').querySelectorAll('.pf-rpill').forEach(r => r.classList.remove('on')); el.classList.add('on') }
+function setRating(el, n) { const row = el.closest('.pf-star-row'); row.querySelectorAll('.pf-star').forEach((s,i) => s.classList.toggle('on', i < n)) }
+function previewSubmit() { toast('Preview submitted ✓  (demo only)'); hidePreview() }
+
+function hidePreview(e) {
+  if (!e || e.target === document.getElementById('previewOverlay')) {
+    document.getElementById('previewOverlay').classList.remove('on')
+  }
+}
+
+// ─── schema output ─────────────────────────────────────────────────────────────
+function showSchema() {
+  const schema = {
+    form_id: slugify(document.getElementById('formName').value),
+    form_name: document.getElementById('formName').value,
+    department: currentDept,
+    version: 1,
+    fields: fields.map(f => ({
+      id: f.id, type: f.type, label: f.label, key: f.key,
+      required: f.required,
+      ...(f.placeholder && {placeholder: f.placeholder}),
+      ...(f.hint && {hint: f.hint}),
+      ...(f.options?.length && {options: f.options}),
+      ...(Object.keys(f.validations||{}).length && {validations: f.validations}),
+    }))
+  }
+  document.getElementById('schemaPre').textContent = JSON.stringify(schema, null, 2)
+  document.getElementById('schemaModal').classList.add('on')
+}
+
+function hideSchema(e) {
+  if (!e || e.target === document.getElementById('schemaModal')) {
+    document.getElementById('schemaModal').classList.remove('on')
+  }
+}
+
+function copySchema() {
+  navigator.clipboard.writeText(document.getElementById('schemaPre').textContent)
+  toast('Schema JSON copied to clipboard')
+}
+
+// ─── publish ───────────────────────────────────────────────────────────────────
+function publishForm() {
+  if (!fields.length) { toast('Add at least one field before publishing'); return }
+  toast('Form published → /apply/' + slugify(document.getElementById('formName').value))
+}
+
+// ─── utils ─────────────────────────────────────────────────────────────────────
+function slugify(s) { return (s||'').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'').slice(0,60) }
+function esc(s) { return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;') }
+
+let toastTimer
+function toast(msg) {
+  clearTimeout(toastTimer)
+  document.getElementById('toastMsg').textContent = msg
+  document.getElementById('toast').classList.add('on')
+  toastTimer = setTimeout(() => document.getElementById('toast').classList.remove('on'), 2800)
+}
+
+init()
+</script>
+</body>
+</html>

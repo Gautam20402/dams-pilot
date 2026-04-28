@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum LeadStatus {
+  new
+  partial
+  contacted
+  in_progress
+  submitted
+  dropped
+  converted
+}
+
+enum LeadSource {
+  ga_poll
+  partial_save
+  direct
+  referral
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  DEPT_ADMIN
+  BUILDER
+  CALLER
+}
+
+enum TeamRole {
+  BUILDER
+  CALLER
+}
+
+enum FormStatus {
+  draft
+  active
+  archived
+}
+
+enum OutreachChannel {
+  email
+  sms
+  call
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users  User[]
+  teams  Team[]
+  forms  Form[]
+  leads  Lead[]
+
+  @@map("departments")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  clerkId      String   @unique @map("clerk_id")
+  email        String   @unique
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  role         UserRole @default(CALLER)
+  departmentId String   @map("department_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  department   Department    @relation(fields: [departmentId], references: [id])
+  teamMembers  TeamMember[]
+  leadEvents   LeadEvent[]
+  outreachLogs OutreachLog[]
+
+  @@index([clerkId])
+  @@index([departmentId])
+  @@map("users")
+}
+
+model Team {
+  id           String   @id @default(cuid())
+  name         String
+  role         TeamRole
+  departmentId String   @map("department_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  department Department   @relation(fields: [departmentId], references: [id])
+  members    TeamMember[]
+
+  @@index([departmentId])
+  @@map("teams")
+}
+
+model TeamMember {
+  teamId    String   @map("team_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+  @@map("team_members")
+}
+
+model Form {
+  id           String     @id @default(cuid())
+  name         String
+  slug         String     @unique
+  departmentId String     @map("department_id")
+  schemaJson   Json       @map("schema_json")
+  status       FormStatus @default(draft)
+  publishedAt  DateTime?  @map("published_at")
+  version      Int        @default(1)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  department Department @relation(fields: [departmentId], references: [id])
+  leads      Lead[]
+
+  @@index([departmentId])
+  @@index([slug])
+  @@map("forms")
+}
+
+model Lead {
+  id             String     @id @default(cuid())
+  sessionId      String     @unique @map("session_id")
+  formId         String?    @map("form_id")
+  departmentId   String     @map("department_id")
+  status         LeadStatus @default(new)
+  source         LeadSource @default(direct)
+  firstName      String?    @map("first_name")
+  lastName       String?    @map("last_name")
+  email          String?
+  phone          String?
+  dataJson       Json       @default("{}") @map("data_json")
+  gaClientId     String?    @map("ga_client_id")
+  utmSource      String?    @map("utm_source")
+  utmMedium      String?    @map("utm_medium")
+  utmCampaign    String?    @map("utm_campaign")
+  utmContent     String?    @map("utm_content")
+  utmTerm        String?    @map("utm_term")
+  lastActivePage Int        @default(0) @map("last_active_page")
+  fieldsFilled   Int        @default(0) @map("fields_filled")
+  completionPct  Int        @default(0) @map("completion_pct")
+  sfLeadId       String?    @map("sf_lead_id")
+  submittedAt    DateTime?  @map("submitted_at")
+  droppedAt      DateTime?  @map("dropped_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  form         Form?         @relation(fields: [formId], references: [id])
+  department   Department    @relation(fields: [departmentId], references: [id])
+  events       LeadEvent[]
+  outreachLogs OutreachLog[]
+
+  @@index([departmentId])
+  @@index([status])
+  @@index([gaClientId])
+  @@index([email])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+model LeadEvent {
+  id          String   @id @default(cuid())
+  leadId      String   @map("lead_id")
+  actorId     String?  @map("actor_id")
+  eventType   String   @map("event_type")
+  note        String?
+  beforeState Json?    @map("before_state")
+  afterState  Json?    @map("after_state")
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  lead  Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([leadId])
+  @@index([createdAt])
+  @@map("lead_events")
+}
+
+model OutreachLog {
+  id         String          @id @default(cuid())
+  leadId     String          @map("lead_id")
+  sentById   String?         @map("sent_by_id")
+  channel    OutreachChannel
+  subject    String?
+  body       String?
+  outcome    String?
+  externalId String?         @map("external_id")
+  sentAt     DateTime        @default(now()) @map("sent_at")
+
+  lead   Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  sentBy User? @relation(fields: [sentById], references: [id])
+
+  @@index([leadId])
+  @@index([sentAt])
+  @@map("outreach_logs")
+}

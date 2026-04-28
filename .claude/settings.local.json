@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm dev *)",
+      "Bash(curl -s http://localhost:3000/admin/dashboard)",
+      "Bash(curl -s \"http://localhost:3000/_next/static/css/app/layout.css\")"
+    ]
+  }
+}

@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DAMS — Leads Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --ink:#0d0e12;--ink2:#3a3c47;--ink3:#7a7c88;--ink4:#b0b2bc;
+  --paper:#ffffff;--paper2:#f6f7fb;--paper3:#eef0f6;--paper4:#e3e5ef;
+  --accent:#2a5cff;--accent3:#d9e3ff;--accent4:#eef2ff;
+  --green:#12b76a;--greenbg:#ecfdf5;--greenbdr:#bbf7d0;
+  --red:#f04438;--redbg:#fef3f2;--redbdr:#fecaca;
+  --amber:#f79009;--amberbg:#fffaeb;--amberbdr:#fde68a;
+  --blue:#2563eb;--bluebg:#eff6ff;--bluebdr:#bfdbfe;
+  --purple:#7c3aed;--purplebg:#f5f3ff;--purplebdr:#ddd6fe;
+  --orange:#ea580c;--orangebg:#fff7ed;--orangebdr:#fed7aa;
+  --border:#e3e5ef;--border2:#c8cad6;
+  --radius:8px;--radiuslg:12px;--radiusxl:16px;
+  --shadow:0 1px 4px rgba(13,14,18,.07);--shadow2:0 4px 20px rgba(13,14,18,.1);
+  --f:'Sora',sans-serif;--m:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f);background:var(--paper2);color:var(--ink);font-size:14px;height:100vh;overflow:hidden}
+
+/* ── layout ── */
+.app{display:grid;grid-template-columns:220px 1fr;height:100vh;overflow:hidden}
+
+/* ── sidebar ── */
+.sidebar{background:var(--paper);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.sb-logo{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-sq{width:28px;height:28px;background:var(--ink);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;flex-shrink:0}
+.sb-name{font-size:14px;font-weight:600;letter-spacing:-.02em}
+.sb-sub{font-size:10px;color:var(--ink4)}
+.sb-section{padding:14px 0 6px}
+.sb-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink4);padding:0 16px 8px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;font-size:12px;font-weight:500;color:var(--ink3);border-left:2px solid transparent;transition:all .12s}
+.sb-item:hover{background:var(--paper2);color:var(--ink)}
+.sb-item.on{background:var(--accent4);color:var(--accent);border-left-color:var(--accent);font-weight:600}
+.sb-icon{font-size:14px;width:18px;text-align:center}
+.sb-ct{margin-left:auto;font-size:10px;font-weight:600;font-family:var(--m);background:var(--paper3);border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--ink3)}
+.sb-ct.active{background:var(--ink);color:#fff;border-color:transparent}
+.sb-div{height:1px;background:var(--border);margin:6px 16px}
+.role-sw{padding:12px 14px}
+.role-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink4);margin-bottom:8px}
+.role-btn{width:100%;text-align:left;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--paper);font-size:11px;font-weight:500;cursor:pointer;font-family:var(--f);color:var(--ink2);margin-bottom:4px;transition:all .12s;display:flex;align-items:center;gap:7px}
+.role-btn:hover:not(.on){border-color:var(--border2);color:var(--ink)}
+.role-btn.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.role-ico{font-size:12px}
+
+/* ── main ── */
+.main{display:flex;flex-direction:column;overflow:hidden}
+
+/* ── topbar ── */
+.topbar{height:52px;background:var(--paper);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 22px;gap:12px;flex-shrink:0}
+.topbar-title{font-size:15px;font-weight:600;letter-spacing:-.02em;flex:1}
+.topbar-sep{width:1px;height:18px;background:var(--border)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:var(--f);transition:all .15s;letter-spacing:-.01em}
+.btn-ghost{background:var(--paper2);color:var(--ink2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--paper3);border-color:var(--border2);color:var(--ink)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:#1a4cf0}
+.btn-sm{padding:5px 12px;font-size:11px}
+.btn-green{background:var(--greenbg);color:var(--green);border:1px solid var(--greenbdr)}
+.btn-red{background:var(--redbg);color:var(--red);border:1px solid var(--redbdr)}
+
+/* ── kpi row ── */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:16px 22px;flex-shrink:0}
+.kpi{background:var(--paper);border:1px solid var(--border);border-radius:var(--radiuslg);padding:14px 16px;box-shadow:var(--shadow);cursor:default;transition:box-shadow .15s}
+.kpi:hover{box-shadow:var(--shadow2)}
+.kpi-val{font-size:26px;font-weight:700;line-height:1;margin-bottom:3px;letter-spacing:-.03em;font-family:var(--m)}
+.kpi-label{font-size:11px;color:var(--ink3);font-weight:500}
+.kpi-trend{font-size:10px;font-family:var(--m);margin-top:4px;display:flex;align-items:center;gap:3px}
+.trend-up{color:var(--green)}
+.trend-dn{color:var(--red)}
+.kpi-bar{height:2px;background:var(--paper3);border-radius:1px;margin-top:8px;overflow:hidden}
+.kpi-fill{height:100%;border-radius:1px;transition:width .8s ease}
+
+/* ── filter bar ── */
+.filter-bar{padding:0 22px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.f-inp{border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;font-size:12px;font-family:var(--f);color:var(--ink);background:var(--paper);outline:none;transition:border .15s}
+.f-inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent4)}
+.f-search{width:200px}
+.f-search::placeholder{color:var(--ink4)}
+.f-sep{width:1px;height:20px;background:var(--border)}
+.f-tag{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--paper);color:var(--ink3);font-family:var(--m);transition:all .12s}
+.f-tag:hover{border-color:var(--border2);color:var(--ink)}
+.f-tag.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.f-count{margin-left:auto;font-size:11px;font-family:var(--m);color:var(--ink4)}
+
+/* ── table ── */
+.table-wrap{flex:1;overflow-y:auto;padding:0 22px 22px}
+.table{background:var(--paper);border:1px solid var(--border);border-radius:var(--radiuslg);overflow:hidden;box-shadow:var(--shadow)}
+.thead{display:grid;grid-template-columns:1fr 140px 120px 80px 90px 100px 120px;padding:10px 16px;background:var(--paper2);border-bottom:1px solid var(--border)}
+.th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink4)}
+.trow{display:grid;grid-template-columns:1fr 140px 120px 80px 90px 100px 120px;padding:13px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;align-items:center}
+.trow:hover{background:var(--paper2)}
+.trow:last-child{border-bottom:none}
+.trow.selected{background:var(--accent4)}
+.td-name{font-size:13px;font-weight:500;margin-bottom:1px}
+.td-email{font-size:11px;color:var(--ink4);font-family:var(--m)}
+.td-prog{font-size:11px;color:var(--ink3);line-height:1.3}
+.pct-row{display:flex;align-items:center;gap:6px}
+.pct-track{width:44px;height:3px;background:var(--paper3);border-radius:2px;overflow:hidden;flex-shrink:0}
+.pct-fill{height:100%;border-radius:2px}
+.pct-num{font-size:10px;font-family:var(--m);color:var(--ink4)}
+.td-date{font-size:11px;font-family:var(--m);color:var(--ink3)}
+.act-row{display:flex;gap:5px}
+.act-btn{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--paper);color:var(--ink2);font-family:var(--f);transition:all .12s}
+.act-btn:hover{border-color:var(--border2);color:var(--ink)}
+.act-btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.act-btn.primary:hover{background:var(--ink2)}
+
+/* ── status badges ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:600;font-family:var(--m);white-space:nowrap}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.s-new{background:var(--bluebg);color:var(--blue)}.s-new::before{background:var(--blue)}
+.s-partial{background:var(--amberbg);color:var(--amber)}.s-partial::before{background:var(--amber)}
+.s-contacted{background:var(--orangebg);color:var(--orange)}.s-contacted::before{background:var(--orange)}
+.s-in_progress{background:var(--purplebg);color:var(--purple)}.s-in_progress::before{background:var(--purple)}
+.s-submitted{background:var(--greenbg);color:var(--green)}.s-submitted::before{background:var(--green)}
+.s-dropped{background:var(--redbg);color:var(--red)}.s-dropped::before{background:var(--red)}
+.s-converted{background:#f0fdf4;color:#059669}.s-converted::before{background:#059669}
+
+/* source badges */
+.src{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-family:var(--m);font-weight:500}
+.src-ga_poll{background:#dcfce7;color:#166534}
+.src-partial_save{background:var(--amberbg);color:#92400e}
+.src-direct{background:var(--bluebg);color:var(--blue)}
+.src-referral{background:var(--purplebg);color:var(--purple)}
+
+/* empty */
+.empty{text-align:center;padding:64px 20px;color:var(--ink4)}
+.empty-icon{font-size:36px;margin-bottom:12px;opacity:.4}
+.empty-title{font-size:14px;color:var(--ink3);margin-bottom:4px;font-weight:500}
+.empty-sub{font-size:12px}
+
+/* ── drawer ── */
+.drawer-overlay{position:fixed;inset:0;background:rgba(13,14,18,.25);z-index:100;display:none}
+.drawer-overlay.on{display:block}
+.drawer{position:fixed;right:0;top:0;bottom:0;width:440px;background:var(--paper);z-index:200;display:flex;flex-direction:column;box-shadow:-4px 0 32px rgba(13,14,18,.12);transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1)}
+.drawer.on{transform:translateX(0)}
+.drawer-head{background:var(--ink);padding:20px 22px;flex-shrink:0;position:relative}
+.drawer-name{font-size:16px;font-weight:600;color:#fff;margin-bottom:3px;letter-spacing:-.02em}
+.drawer-id{font-family:var(--m);font-size:10px;color:rgba(255,255,255,.35);margin-bottom:10px}
+.drawer-tags{display:flex;gap:6px;flex-wrap:wrap}
+.drawer-x{position:absolute;top:16px;right:16px;width:28px;height:28px;background:rgba(255,255,255,.1);border:none;border-radius:50%;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.drawer-x:hover{background:rgba(255,255,255,.2)}
+.drawer-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.dtab{flex:1;padding:10px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;color:var(--ink3);border-bottom:2px solid transparent;transition:all .15s}
+.dtab.on{color:var(--ink);border-bottom-color:var(--ink)}
+.dtab:hover:not(.on){color:var(--ink2)}
+.drawer-body{flex:1;overflow-y:auto;padding:18px 22px}
+.d-section{margin-bottom:20px}
+.d-section-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink4);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.d-row{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--paper3);font-size:12px;gap:12px}
+.d-row:last-child{border-bottom:none}
+.d-key{color:var(--ink4);font-size:11px;flex-shrink:0;width:120px}
+.d-val{font-weight:500;text-align:right;word-break:break-all;color:var(--ink)}
+
+/* status update */
+.status-block{background:var(--paper2);border:1px solid var(--border);border-radius:var(--radiuslg);padding:12px;margin-bottom:14px}
+.status-block-lbl{font-size:11px;font-weight:500;color:var(--ink3);margin-bottom:8px}
+.spills{display:flex;flex-wrap:wrap;gap:5px}
+.spill{padding:4px 10px;border-radius:5px;font-size:10px;font-weight:600;font-family:var(--m);cursor:pointer;border:1px solid var(--border);background:var(--paper);color:var(--ink3);transition:all .12s}
+.spill:hover{border-color:var(--border2);color:var(--ink)}
+.spill.curr{background:var(--ink);color:#fff;border-color:var(--ink)}
+.locked-msg{font-size:11px;color:var(--ink4);font-style:italic;padding:6px 0;display:flex;align-items:center;gap:6px}
+
+/* outreach */
+.out-form{background:var(--paper2);border:1px solid var(--border);border-radius:var(--radiuslg);padding:14px;margin-bottom:12px}
+.out-form-lbl{font-size:11px;font-weight:500;color:var(--ink2);margin-bottom:8px}
+.out-inp{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;font-size:12px;font-family:var(--f);color:var(--ink);background:var(--paper);outline:none;margin-bottom:6px;transition:border .15s}
+.out-inp:focus{border-color:var(--accent)}
+.out-ta{resize:vertical;min-height:72px;line-height:1.5}
+.out-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.out-log-item{background:var(--paper2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:6px}
+.out-log-ch{font-size:10px;font-weight:600;font-family:var(--m);text-transform:uppercase;color:var(--ink3);margin-bottom:3px;display:flex;align-items:center;justify-content:space-between}
+.out-log-body{font-size:12px;color:var(--ink2)}
+.out-log-time{font-size:10px;font-family:var(--m);color:var(--ink4);margin-top:3px}
+
+/* timeline */
+.tl-item{display:grid;grid-template-columns:52px 1fr;gap:0 10px;padding:5px 0;position:relative}
+.tl-item:not(:last-child)::after{content:'';position:absolute;left:51px;top:18px;bottom:0;width:1px;background:var(--border)}
+.tl-t{font-family:var(--m);font-size:10px;color:var(--ink4);text-align:right;padding-top:2px}
+.tl-dot{width:8px;height:8px;border-radius:50%;border:2px solid var(--border);margin-top:3px;flex-shrink:0;position:relative;left:-3px}
+.tl-row{display:flex;gap:8px;align-items:flex-start}
+.tl-content{padding-bottom:10px}
+.tl-ev{font-size:12px;font-weight:500;margin-bottom:1px}
+.tl-meta{font-size:10px;color:var(--ink4);font-family:var(--m)}
+
+/* toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;border-radius:var(--radiuslg);padding:10px 18px;font-size:12px;font-weight:500;z-index:500;transform:translateY(60px);opacity:0;transition:all .25s;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.toast.on{transform:translateY(0);opacity:1}
+.toast-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ── sidebar ── -->
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-sq">D</div>
+      <div><div class="sb-name">DAMS</div><div class="sb-sub">Application Management</div></div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Status views</div>
+      <div class="sb-item on" id="sv-all" onclick="setView('all',this)"><span class="sb-icon">▤</span>All leads<span class="sb-ct active" id="ct-all">0</span></div>
+      <div class="sb-item" id="sv-new" onclick="setView('new',this)"><span class="sb-icon">●</span>New<span class="sb-ct" id="ct-new">0</span></div>
+      <div class="sb-item" id="sv-partial" onclick="setView('partial',this)"><span class="sb-icon">◑</span>Partial<span class="sb-ct" id="ct-partial">0</span></div>
+      <div class="sb-item" id="sv-contacted" onclick="setView('contacted',this)"><span class="sb-icon">◎</span>Contacted<span class="sb-ct" id="ct-contacted">0</span></div>
+      <div class="sb-item" id="sv-in_progress" onclick="setView('in_progress',this)"><span class="sb-icon">↻</span>In progress<span class="sb-ct" id="ct-in_progress">0</span></div>
+      <div class="sb-item" id="sv-submitted" onclick="setView('submitted',this)"><span class="sb-icon">✓</span>Submitted<span class="sb-ct" id="ct-submitted">0</span></div>
+      <div class="sb-item" id="sv-dropped" onclick="setView('dropped',this)"><span class="sb-icon">✕</span>Dropped<span class="sb-ct" id="ct-dropped">0</span></div>
+    </div>
+
+    <div class="sb-div"></div>
+
+    <div class="sb-section">
+      <div class="sb-label">Departments</div>
+      <div class="sb-item on" id="sd-all" onclick="setDept('all',this)"><span class="sb-icon">⊞</span>All departments</div>
+      <div class="sb-item" onclick="setDept('cs',this)"><span class="sb-icon">◈</span>Computer Science</div>
+      <div class="sb-item" onclick="setDept('business',this)"><span class="sb-icon">◈</span>Business</div>
+      <div class="sb-item" onclick="setDept('mechanical',this)"><span class="sb-icon">◈</span>Mechanical Eng.</div>
+      <div class="sb-item" onclick="setDept('psychology',this)"><span class="sb-icon">◈</span>Psychology</div>
+      <div class="sb-item" onclick="setDept('design',this)"><span class="sb-icon">◈</span>Design & Arts</div>
+    </div>
+
+    <div class="sb-div"></div>
+
+    <div class="sb-section">
+      <div class="role-sw">
+        <div class="role-title">Current role</div>
+        <button class="role-btn on" id="rb-admin" onclick="switchRole('admin',this)"><span class="role-ico">⬡</span>Admin — full access</button>
+        <button class="role-btn" id="rb-caller" onclick="switchRole('caller',this)"><span class="role-ico">◎</span>Caller — outreach only</button>
+        <button class="role-btn" id="rb-builder" onclick="switchRole('builder',this)"><span class="role-ico">▣</span>Builder — view only</button>
+      </div>
+    </div>
+
+    <div class="sb-div"></div>
+
+    <div class="sb-section">
+      <div class="sb-label">Actions</div>
+      <div class="sb-item" onclick="seedMore()"><span class="sb-icon">+</span>Add test leads</div>
+      <div class="sb-item" onclick="exportCSV()"><span class="sb-icon">↓</span>Export CSV</div>
+      <div class="sb-item" onclick="clearAll()"><span class="sb-icon">✕</span>Clear all leads</div>
+      <div class="sb-item" onclick="window.open('form_builder.html')"><span class="sb-icon">⚙</span>Form builder →</div>
+    </div>
+  </aside>
+
+  <!-- ── main ── -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Leads</div>
+      <div class="topbar-sep"></div>
+      <select class="f-inp" id="sortSel" onchange="render()" style="font-size:12px">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="pct_desc">Highest completion</option>
+        <option value="name">Name A–Z</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="render()">↺ Refresh</button>
+      <button class="btn btn-accent btn-sm" onclick="seedOne()">+ Add lead</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row" id="kpiRow">
+      <div class="kpi"><div class="kpi-val" id="kv-total" style="color:var(--ink)">0</div><div class="kpi-label">Total leads</div><div class="kpi-bar"><div class="kpi-fill" id="kb-total" style="background:var(--ink)"></div></div></div>
+      <div class="kpi"><div class="kpi-val" id="kv-capture" style="color:var(--green)">0%</div><div class="kpi-label">Capture rate</div><div class="kpi-trend"><span class="trend-up">↑</span><span id="kv-capture-sub" style="color:var(--ink4)">target &gt;85%</span></div><div class="kpi-bar"><div class="kpi-fill" id="kb-capture" style="background:var(--green)"></div></div></div>
+      <div class="kpi"><div class="kpi-val" id="kv-time" style="color:var(--amber)">—</div><div class="kpi-label">Avg engage time</div><div class="kpi-trend" style="color:var(--ink4)">target &lt;15 min</div></div>
+      <div class="kpi"><div class="kpi-val" id="kv-out" style="color:var(--blue)">0</div><div class="kpi-label">Outreach sent</div><div class="kpi-bar"><div class="kpi-fill" id="kb-out" style="background:var(--blue)"></div></div></div>
+      <div class="kpi"><div class="kpi-val" id="kv-sub" style="color:var(--green)">0</div><div class="kpi-label">Submitted</div><div class="kpi-bar"><div class="kpi-fill" id="kb-sub" style="background:var(--green)"></div></div></div>
+    </div>
+
+    <!-- filters -->
+    <div class="filter-bar">
+      <input class="f-inp f-search" type="text" id="searchInp" placeholder="Search name, email, ID…" oninput="render()"/>
+      <div class="f-sep"></div>
+      <select class="f-inp" id="deptFilt" onchange="render()" style="font-size:12px">
+        <option value="">All depts</option>
+        <option value="cs">Computer Science</option>
+        <option value="business">Business</option>
+        <option value="mechanical">Mechanical</option>
+        <option value="psychology">Psychology</option>
+        <option value="design">Design</option>
+      </select>
+      <select class="f-inp" id="srcFilt" onchange="render()" style="font-size:12px">
+        <option value="">All sources</option>
+        <option value="ga_poll">GA4 poll</option>
+        <option value="partial_save">Partial save</option>
+        <option value="direct">Direct</option>
+      </select>
+      <div class="f-sep"></div>
+      <span class="f-count" id="fCount">—</span>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">Export CSV</button>
+    </div>
+
+    <!-- table -->
+    <div class="table-wrap">
+      <div class="table">
+        <div class="thead">
+          <div class="th">Applicant</div>
+          <div class="th">Program</div>
+          <div class="th">Status</div>
+          <div class="th">Complete</div>
+          <div class="th">Source</div>
+          <div class="th">Created</div>
+          <div class="th">Actions</div>
+        </div>
+        <div id="tbody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- drawer overlay -->
+<div class="drawer-overlay" id="overlay" onclick="closeDrawer()"></div>
+
+<!-- drawer -->
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="drawer-name" id="dName">—</div>
+    <div class="drawer-id" id="dId">—</div>
+    <div class="drawer-tags" id="dTags"></div>
+    <button class="drawer-x" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-tabs">
+    <div class="dtab on" id="dt-details" onclick="switchDrawerTab('details',this)">Details</div>
+    <div class="dtab" id="dt-outreach" onclick="switchDrawerTab('outreach',this)">Outreach</div>
+    <div class="dtab" id="dt-timeline" onclick="switchDrawerTab('timeline',this)">Timeline</div>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<!-- toast -->
+<div class="toast" id="toast"><div class="toast-dot"></div><span id="toastMsg"></span></div>
+
+<script>
+// ── state ─────────────────────────────────────────────────────────────────────
+let leads = []
+let currentView = 'all'
+let currentDept = 'all'
+let currentRole = 'admin'
+let activeLead = null
+let activeDrawerTab = 'details'
+let outreachCount = 0
+
+const PERMS = {
+  admin:   {status:true, outreach:true},
+  caller:  {status:true, outreach:true},
+  builder: {status:false, outreach:false},
+}
+
+const STATUS_COLORS = {
+  new:'#2563eb', partial:'#f79009', contacted:'#ea580c',
+  in_progress:'#7c3aed', submitted:'#12b76a', dropped:'#f04438', converted:'#059669',
+}
+
+// ── seed data ─────────────────────────────────────────────────────────────────
+const NAMES=[['Priya','Sharma'],['Marcus','Webb'],['Sofia','Reyes'],['Aiden','Park'],['Zara','Hassan'],['Ethan','Nguyen'],['Chloe','Osei'],['Liam','Torres'],['Maya','Patel'],['Noah','Kim'],['Amara','Diallo'],['James','Wilson']]
+const DEPTS=['cs','business','mechanical','psychology','design']
+const PROGS={cs:['MS Computer Science','MS Software Engineering','PhD Computer Science'],business:['MBA Full-time','MS Finance','MS Business Analytics'],mechanical:['MS Mechanical Engineering','PhD Mechanical Engineering'],psychology:['MS Psychology','PhD Psychology — Clinical'],design:['MFA Design','MS Architecture']}
+const STATUSES=['new','partial','contacted','in_progress','submitted','dropped']
+const SOURCES=['ga_poll','partial_save','direct']
+const CAMPS=['grad_admissions_2025','mba_fall_2025','phd_program_2025','engineering_2025','design_fall_2025']
+
+function makeId(){return 'LEAD-'+Date.now().toString(36).toUpperCase()+'-'+Math.random().toString(36).substring(2,5).toUpperCase()}
+function randEl(a){return a[Math.floor(Math.random()*a.length)]}
+function randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+
+function seedInitial(){
+  const presets=[
+    {name:NAMES[0],dept:'cs',   status:'new',         src:'ga_poll',     pct:22},
+    {name:NAMES[1],dept:'business',status:'contacted', src:'partial_save',pct:60},
+    {name:NAMES[2],dept:'cs',   status:'in_progress',  src:'partial_save',pct:84},
+    {name:NAMES[3],dept:'business',status:'submitted', src:'direct',      pct:100},
+    {name:NAMES[4],dept:'psychology',status:'new',     src:'ga_poll',     pct:14},
+    {name:NAMES[5],dept:'mechanical',status:'contacted',src:'partial_save',pct:55},
+    {name:NAMES[6],dept:'design',status:'dropped',    src:'ga_poll',     pct:28},
+    {name:NAMES[7],dept:'cs',   status:'in_progress',  src:'partial_save',pct:90},
+    {name:NAMES[8],dept:'business',status:'new',      src:'ga_poll',     pct:8},
+    {name:NAMES[9],dept:'psychology',status:'submitted',src:'direct',    pct:100},
+  ]
+  leads = presets.map((p,i) => ({
+    id: 'LEAD-' + (i+1).toString().padStart(4,'0') + '-' + 'ABCDEF'[i],
+    firstName: p.name[0], lastName: p.name[1],
+    email: p.name[0].toLowerCase()+'.'+p.name[1].toLowerCase()+'@email.com',
+    phone: '+1-602-555-0' + String(100+i),
+    dept: p.dept,
+    program: PROGS[p.dept][0],
+    status: p.status,
+    source: p.src,
+    completionPct: p.pct,
+    fieldsFilled: Math.round(p.pct/100*18),
+    gaClientId: Math.floor(Math.random()*9e8+1e8)+'.'+Math.floor(Date.now()/1000-i*3600),
+    utmCampaign: randEl(CAMPS),
+    utmSource: p.src==='ga_poll'?'google':p.src==='partial_save'?'meta':'direct',
+    sfLeadId: p.status==='submitted'?'00Q'+Math.random().toString(36).substring(2,12).toUpperCase():null,
+    outreach: p.status==='contacted'||p.status==='in_progress'||p.status==='submitted'
+      ? [{ch:'email',subject:'Your application — next steps',sentAt:new Date(Date.now()-i*1800000),sentBy:'admin'}] : [],
+    events: [
+      {type:'lead_created',note:p.src==='ga_poll'?'Captured by GA4 poller':'Partial save on field blur',at:new Date(Date.now()-(10-i)*3600000)},
+      ...(p.status!=='new'&&p.status!=='partial' ? [{type:'status_change',note:'Status → '+p.status,at:new Date(Date.now()-i*1800000)}] : []),
+    ],
+    dataJson:{first_name:p.name[0],last_name:p.name[1],email:p.name[0].toLowerCase()+'@email.com',gpa:'3.'+(5+i%5)},
+    createdAt: new Date(Date.now()-(10-i)*3600000),
+  }))
+}
+
+// ── render table ──────────────────────────────────────────────────────────────
+function render(){
+  let filtered = [...leads]
+  const q = document.getElementById('searchInp').value.toLowerCase()
+  const dept = document.getElementById('deptFilt').value || currentDept
+  const src = document.getElementById('srcFilt').value
+  const sort = document.getElementById('sortSel').value
+
+  if (currentView !== 'all') filtered = filtered.filter(l => l.status === currentView)
+  if (dept && dept !== 'all') filtered = filtered.filter(l => l.dept === dept)
+  if (src) filtered = filtered.filter(l => l.source === src)
+  if (q) filtered = filtered.filter(l => (l.firstName+' '+l.lastName+' '+l.email+' '+l.id).toLowerCase().includes(q))
+  if (currentRole === 'builder') filtered = filtered.filter(l => l.dept === 'cs' || l.dept === 'business')
+
+  if (sort === 'oldest') filtered.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt))
+  else if (sort === 'pct_desc') filtered.sort((a,b)=>b.completionPct-a.completionPct)
+  else if (sort === 'name') filtered.sort((a,b)=>a.firstName.localeCompare(b.firstName))
+  else filtered.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))
+
+  document.getElementById('fCount').textContent = filtered.length + ' lead' + (filtered.length!==1?'s':'')
+
+  const tbody = document.getElementById('tbody')
+  if (!filtered.length){
+    tbody.innerHTML = `<div class="empty"><div class="empty-icon">◎</div><div class="empty-title">No leads match your filters</div><div class="empty-sub">Adjust filters or add test leads from the sidebar</div></div>`
+    return
+  }
+  tbody.innerHTML = filtered.map(l => `
+    <div class="trow ${activeLead?.id===l.id?'selected':''}" onclick="openDrawer('${l.id}')">
+      <div>
+        <div class="td-name">${l.firstName} ${l.lastName}</div>
+        <div class="td-email">${l.email}</div>
+      </div>
+      <div class="td-prog">${l.program}</div>
+      <div><span class="badge s-${l.status}">${l.status.replace('_',' ')}</span></div>
+      <div>
+        <div class="pct-row">
+          <div class="pct-track"><div class="pct-fill" style="width:${l.completionPct}%;background:${l.completionPct>=80?'var(--green)':l.completionPct>=40?'var(--amber)':'var(--red)'}"></div></div>
+          <span class="pct-num">${l.completionPct}%</span>
+        </div>
+      </div>
+      <div><span class="src src-${l.source}">${l.source}</span></div>
+      <div class="td-date">${fmtDate(l.createdAt)}</div>
+      <div class="act-row" onclick="event.stopPropagation()">
+        ${PERMS[currentRole].outreach?`<button class="act-btn primary" onclick="quickEmail('${l.id}')">Email</button>`:''}
+        <button class="act-btn" onclick="openDrawer('${l.id}')">View</button>
+      </div>
+    </div>`).join('')
+
+  updateKPIs(filtered)
+}
+
+function updateKPIs(){
+  const all = leads
+  const t = all.length
+  const cap = all.filter(l=>l.source==='ga_poll'||l.source==='partial_save').length
+  const rate = t?Math.min(100,Math.round(cap/t*100)):0
+  const sub = all.filter(l=>l.status==='submitted').length
+  set('kv-total',t); set('kv-capture',rate+'%'); set('kv-time',t>3?'4.2m':'—'); set('kv-out',outreachCount); set('kv-sub',sub)
+  pct('kb-total',Math.min(t*7,100)); pct('kb-capture',rate); pct('kb-out',Math.min(outreachCount*10,100)); pct('kb-sub',t?Math.round(sub/t*100):0)
+  const STATUSES_ALL=['new','partial','contacted','in_progress','submitted','dropped']
+  set('ct-all',t)
+  STATUSES_ALL.forEach(s=>{const el=document.getElementById('ct-'+s);if(el)el.textContent=all.filter(l=>l.status===s).length})
+}
+
+// ── drawer ────────────────────────────────────────────────────────────────────
+function openDrawer(id){
+  activeLead = leads.find(l=>l.id===id)
+  if(!activeLead) return
+  document.getElementById('dName').textContent = activeLead.firstName+' '+activeLead.lastName
+  document.getElementById('dId').textContent = activeLead.id
+  document.getElementById('dTags').innerHTML = `<span class="badge s-${activeLead.status}">${activeLead.status.replace('_',' ')}</span><span class="src src-${activeLead.source}" style="margin-left:2px">${activeLead.source}</span>`
+  switchDrawerTab(activeDrawerTab, document.getElementById('dt-'+activeDrawerTab))
+  document.getElementById('drawer').classList.add('on')
+  document.getElementById('overlay').classList.add('on')
+  render()
+}
+
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('on')
+  document.getElementById('overlay').classList.remove('on')
+  activeLead = null
+  render()
+}
+
+function switchDrawerTab(tab, el){
+  activeDrawerTab = tab
+  document.querySelectorAll('.dtab').forEach(t=>t.classList.remove('on'))
+  el?.classList.add('on')
+  const body = document.getElementById('drawerBody')
+  if(!activeLead){body.innerHTML='';return}
+  const l = activeLead
+
+  if(tab==='details'){
+    const statusBlock = PERMS[currentRole].status
+      ? `<div class="status-block"><div class="status-block-lbl">Update status</div><div class="spills">${['new','partial','contacted','in_progress','submitted','dropped','converted'].map(s=>`<button class="spill ${l.status===s?'curr':''}" onclick="setStatus('${l.id}','${s}',this)">${s.replace('_',' ')}</button>`).join('')}</div></div>`
+      : `<div class="locked-msg">⊘ ${currentRole} role cannot update status</div>`
+    const rows = [
+      ['Email',l.email],['Phone',l.phone],['Department',l.dept],['Program',l.program],
+      ['GPA',l.dataJson?.gpa],['Completion',l.completionPct+'%'],['Fields filled',l.fieldsFilled],
+      ['GA4 client ID',l.gaClientId?.substring(0,20)+'…'],['UTM campaign',l.utmCampaign||'—'],
+      ['SF lead ID',l.sfLeadId||'—'],['Created',new Date(l.createdAt).toLocaleString()],
+    ].filter(([,v])=>v)
+    body.innerHTML = `<div class="d-section">${statusBlock}<div class="d-section-title">Lead details</div>${rows.map(([k,v])=>`<div class="d-row"><span class="d-key">${k}</span><span class="d-val">${v}</span></div>`).join('')}</div>`
+  }
+
+  else if(tab==='outreach'){
+    if(!PERMS[currentRole].outreach){
+      body.innerHTML=`<div class="locked-msg" style="margin-top:20px">⊘ ${currentRole} role cannot send outreach</div>`; return
+    }
+    const logs = (l.outreach||[]).map(o=>`<div class="out-log-item"><div class="out-log-ch">${o.ch.toUpperCase()}<span style="font-size:10px;font-family:var(--m);color:var(--ink4)">${new Date(o.sentAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div><div class="out-log-body">${o.subject||'Outreach sent'}</div></div>`).join('')
+    body.innerHTML = `
+      <div class="out-form">
+        <div class="out-form-lbl">Compose email</div>
+        <input class="out-inp" id="out_subject" placeholder="Subject" value="Your application — next steps"/>
+        <textarea class="out-inp out-ta" id="out_body" placeholder="Hi ${l.firstName},&#10;&#10;Your application is waiting…"></textarea>
+      </div>
+      <div class="out-btns">
+        <button class="btn btn-green btn-sm" onclick="sendOutreach('email')">Send email via Resend</button>
+        <button class="btn btn-ghost btn-sm" onclick="sendOutreach('sms')">Send SMS</button>
+        <button class="btn btn-ghost btn-sm" onclick="sendOutreach('call')">Log call</button>
+      </div>
+      <div class="d-section-title">Outreach history</div>
+      ${logs || '<div style="font-size:12px;color:var(--ink4)">No outreach sent yet</div>'}`
+  }
+
+  else if(tab==='timeline'){
+    const evts = [...(l.events||[])].reverse()
+    body.innerHTML = `<div class="d-section"><div class="d-section-title">Event timeline</div>${evts.map(e=>`
+      <div class="tl-item">
+        <div class="tl-t">${new Date(e.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>
+        <div class="tl-row">
+          <div class="tl-dot" style="border-color:${STATUS_COLORS[e.status]||'var(--border2)'}"></div>
+          <div class="tl-content"><div class="tl-ev">${evtLabel(e.type)}</div><div class="tl-meta">${e.note||''}</div></div>
+        </div>
+      </div>`).join('')}</div>`
+  }
+}
+
+function evtLabel(t){const m={lead_created:'Lead created',field_saved:'Field saved',status_change:'Status changed',submitted:'Application submitted',drop_off:'Drop-off detected',outreach_sent:'Outreach sent'};return m[t]||t}
+
+function setStatus(id,status,el){
+  const l=leads.find(x=>x.id===id);if(!l)return
+  l.status=status
+  if(!l.events)l.events=[]
+  l.events.push({type:'status_change',note:'Status → '+status,at:new Date()})
+  document.querySelectorAll('.spill').forEach(s=>s.classList.remove('curr'))
+  el.classList.add('curr')
+  document.getElementById('dTags').innerHTML=`<span class="badge s-${l.status}">${l.status.replace('_',' ')}</span><span class="src src-${l.source}" style="margin-left:2px">${l.source}</span>`
+  render(); updateKPIs(); toast('Status updated → '+status)
+}
+
+function sendOutreach(ch){
+  if(!activeLead)return
+  const subject = document.getElementById('out_subject')?.value||'Outreach sent'
+  if(!activeLead.outreach)activeLead.outreach=[]
+  activeLead.outreach.push({ch,subject,sentAt:new Date(),sentBy:currentRole})
+  outreachCount++
+  if(activeLead.status==='new'||activeLead.status==='partial'){
+    activeLead.status='contacted'
+    if(!activeLead.events)activeLead.events=[]
+    activeLead.events.push({type:'status_change',note:'Auto-advanced to contacted',at:new Date()})
+  }
+  activeLead.events?.push({type:'outreach_sent',note:ch+' sent via '+{email:'Resend',sms:'Twilio',call:'manual log'}[ch],at:new Date()})
+  render(); updateKPIs()
+  switchDrawerTab('outreach',document.getElementById('dt-outreach'))
+  toast(ch.charAt(0).toUpperCase()+ch.slice(1)+' sent for '+activeLead.firstName)
+}
+
+function quickEmail(id){
+  const l=leads.find(x=>x.id===id);if(!l)return
+  if(!PERMS[currentRole].outreach){toast('Role cannot send outreach');return}
+  if(!l.outreach)l.outreach=[]
+  l.outreach.push({ch:'email',subject:'Your application — next steps',sentAt:new Date(),sentBy:currentRole})
+  outreachCount++
+  if(l.status==='new'||l.status==='partial')l.status='contacted'
+  render(); updateKPIs(); toast('Email sent to '+l.firstName)
+}
+
+// ── nav ───────────────────────────────────────────────────────────────────────
+function setView(view,el){
+  currentView=view
+  document.querySelectorAll('[id^=sv-]').forEach(e=>e.classList.remove('on'))
+  el.classList.add('on')
+  render()
+}
+
+function setDept(dept,el){
+  currentDept=dept
+  document.getElementById('deptFilt').value=dept==='all'?'':dept
+  document.querySelectorAll('[id^=sd-]').forEach(e=>e.classList.remove('on'))
+  el.classList.add('on')
+  render()
+}
+
+function switchRole(role,el){
+  currentRole=role
+  document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('on'))
+  el.classList.add('on')
+  render(); toast('Role switched → '+role)
+}
+
+// ── actions ───────────────────────────────────────────────────────────────────
+function seedMore(){
+  const picks=NAMES.slice(Math.floor(Math.random()*6),Math.floor(Math.random()*6)+3)
+  picks.forEach(n=>{
+    const dept=randEl(DEPTS)
+    leads.unshift({
+      id:makeId(),firstName:n[0],lastName:n[1],
+      email:n[0].toLowerCase()+'.'+n[1].toLowerCase()+'@test.com',
+      phone:'+1-480-555-'+randInt(1000,9999),dept,
+      program:randEl(PROGS[dept]),
+      status:randEl(['new','partial','contacted']),
+      source:randEl(SOURCES),
+      completionPct:randInt(5,85),fieldsFilled:randInt(1,14),
+      gaClientId:randInt(1e8,9e8)+'.'+randInt(1e9,9e9),
+      utmCampaign:randEl(CAMPS),utmSource:'google',sfLeadId:null,
+      outreach:[],events:[{type:'lead_created',note:'GA4 poller — drop-off captured',at:new Date()}],
+      dataJson:{first_name:n[0],last_name:n[1]},createdAt:new Date(),
+    })
+  })
+  render(); updateKPIs(); toast(picks.length+' leads added')
+}
+
+function seedOne(){
+  const n=randEl(NAMES), dept=randEl(DEPTS)
+  leads.unshift({
+    id:makeId(),firstName:n[0],lastName:n[1],
+    email:n[0].toLowerCase()+'.'+n[1].toLowerCase()+'@email.com',
+    phone:'+1-602-555-'+randInt(1000,9999),dept,
+    program:randEl(PROGS[dept]),status:'new',source:'partial_save',
+    completionPct:randInt(10,60),fieldsFilled:randInt(1,8),
+    gaClientId:randInt(1e8,9e8)+'.'+randInt(1e9,9e9),utmCampaign:randEl(CAMPS),utmSource:'meta',sfLeadId:null,
+    outreach:[],events:[{type:'lead_created',note:'Partial save — field blur',at:new Date()}],
+    dataJson:{first_name:n[0],last_name:n[1]},createdAt:new Date(),
+  })
+  render(); updateKPIs(); toast('New lead added')
+}
+
+function clearAll(){if(confirm('Clear all leads?')){leads=[];activeLead=null;closeDrawer();render();updateKPIs();toast('All leads cleared')}}
+
+function exportCSV(){
+  const h=['ID','First','Last','Email','Dept','Program','Status','Source','Pct','Campaign','SF ID','Created']
+  const rows=leads.map(l=>[l.id,l.firstName,l.lastName,l.email,l.dept,l.program,l.status,l.source,l.completionPct,l.utmCampaign||'',l.sfLeadId||'',new Date(l.createdAt).toISOString()])
+  const csv=[h,...rows].map(r=>r.map(v=>`"${v||''}"`).join(',')).join('\n')
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='leads_'+new Date().toISOString().slice(0,10)+'.csv';a.click()
+  toast('CSV exported — '+leads.length+' leads')
+}
+
+// ── utils ─────────────────────────────────────────────────────────────────────
+function set(id,v){const e=document.getElementById(id);if(e)e.textContent=v}
+function pct(id,v){const e=document.getElementById(id);if(e)e.style.width=v+'%'}
+function fmtDate(d){return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}
+let toastTimer
+function toast(msg){clearTimeout(toastTimer);document.getElementById('toastMsg').textContent=msg;document.getElementById('toast').classList.add('on');toastTimer=setTimeout(()=>document.getElementById('toast').classList.remove('on'),2800)}
+
+seedInitial()
+render()
+updateKPIs()
+</script>
+</body>
+</html>

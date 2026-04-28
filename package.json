@@ -1,0 +1,21 @@
+{
+  "name": "dams",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Decentralized Application Management System",
+  "scripts": {
+    "dev": "pnpm --parallel --filter './apps/*' dev",
+    "build": "pnpm --filter './packages/*' build && pnpm --filter './apps/*' build",
+    "db:generate": "pnpm --filter @dams/db generate",
+    "db:migrate": "pnpm --filter @dams/db migrate:dev",
+    "db:migrate:deploy": "pnpm --filter @dams/db migrate:deploy",
+    "db:seed": "pnpm --filter @dams/db seed",
+    "db:studio": "pnpm --filter @dams/db studio"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "prettier": "^3.2.4"
+  },
+  "engines": { "node": ">=20.0.0", "pnpm": ">=8.0.0" }
+}

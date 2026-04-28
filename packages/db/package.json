@@ -1,0 +1,21 @@
+{
+  "name": "@dams/db",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "scripts": {
+    "generate":     "prisma generate --schema=./prisma/schema.prisma",
+    "migrate:dev":  "prisma migrate dev --schema=./prisma/schema.prisma",
+    "migrate:deploy": "prisma migrate deploy --schema=./prisma/schema.prisma",
+    "studio":       "prisma studio --schema=./prisma/schema.prisma",
+    "seed":         "tsx ./prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.8.1"
+  },
+  "devDependencies": {
+    "prisma": "^5.8.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "@dams/types",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "devDependencies": { "typescript": "^5.3.3" }
+}
