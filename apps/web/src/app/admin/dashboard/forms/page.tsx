@@ -113,7 +113,6 @@ export default function FormsPage() {
 
   const selectedField = fields.find(f => f.id === selected)
   const displayFormTitle = formTitle.trim() ? `${formName} — ${formTitle}` : formName
-  const isEditing = editingFormId !== null
 
   useEffect(() => {
     if (didInitFromUrl) return
@@ -437,16 +436,6 @@ export default function FormsPage() {
                   <div className="text-sm font-semibold">Name and title</div>
                   <div className="text-xs text-gray-400 mt-0.5">Used for your internal form name and applicant-facing title</div>
                 </div>
-                <select
-                  className="border border-gray-200 rounded px-2 py-1.5 text-xs outline-none bg-gray-50"
-                  value={dept}
-                  onChange={e => switchDept(e.target.value)}
-                  disabled={isEditing}
-                >
-                  {(departments.length > 0 ? departments : Object.entries(DEPT_NAMES).map(([k, v]) => ({ slug: k, name: v, id: k }))).map(d => (
-                    <option key={d.slug} value={d.slug}>{d.name}</option>
-                  ))}
-                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3 mt-4">
@@ -473,7 +462,7 @@ export default function FormsPage() {
               </div>
 
               <div className="text-xs text-gray-400 mt-3">
-                Preview: <span className="font-medium text-gray-700">{displayFormTitle}</span> · Department: {DEPT_NAMES[dept]} · {fields.length} fields
+                Preview: <span className="font-medium text-gray-700">{displayFormTitle}</span> · {fields.length} fields
               </div>
             </div>
             {fields.length === 0 ? (
