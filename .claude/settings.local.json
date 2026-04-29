@@ -16,7 +16,22 @@
       "Bash(curl -s http://localhost:3001/api/leads -H 'Authorization: Bearer change_this_to_a_random_32_char_string')",
       "Bash(python3 -c ' *)",
       "Bash(curl -sv -X POST http://localhost:3001/api/leads/partial -H 'Content-Type: application/json' -d '{ *)",
-      "Bash(curl -s -X POST http://localhost:3001/api/leads/submit -H 'Content-Type: application/json' -d '{\"leadId\":\"cmoihobws000ftqa38v22i28b\",\"sessionId\":\"test-session-debug-001\"}')"
+      "Bash(curl -s -X POST http://localhost:3001/api/leads/submit -H 'Content-Type: application/json' -d '{\"leadId\":\"cmoihobws000ftqa38v22i28b\",\"sessionId\":\"test-session-debug-001\"}')",
+      "Bash(git pull *)",
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(curl -s http://localhost:3000/ -L -I)",
+      "Bash(curl -sv http://localhost:3000/)",
+      "Bash(git rm *)",
+      "Bash(lsof -ti:3000)",
+      "Bash(lsof -ti:3001)",
+      "Bash(lsof -i:3000)",
+      "Bash(npx next *)",
+      "Bash(node -e ' *)",
+      "Bash(npx tsc *)",
+      "Bash(lsof -i:3001)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3002/admin/dashboard)"
     ]
   }
 }
