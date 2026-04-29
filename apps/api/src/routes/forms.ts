@@ -46,7 +46,7 @@ export async function formsRoutes(fastify: FastifyInstance) {
     const departmentId = req.userRole==='SUPER_ADMIN' ? b.data.departmentId : req.departmentId!
     const slug = b.data.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'').slice(0,60)+'-'+Date.now().toString(36)
     const form = await prisma.form.create({
-      data:{ ...b.data, departmentId, slug, schemaJson:b.data.schemaJson as unknown as Prisma.InputJsonValue },
+      data:{ ...b.data, departmentId, slug, schemaJson:b.data.schemaJson as any },
     })
     return reply.status(201).send({ success:true, data:form })
   })

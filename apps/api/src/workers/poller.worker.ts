@@ -39,7 +39,7 @@ const worker = new Worker('ga4-poller', async (job) => {
         { name:'firstUserSource' }, { name:'firstUserMedium' }, { name:'sessionId' },
       ],
       metrics: [{ name:'sessions' }, { name:'conversions' }],
-      dimensionFilter: { orGroup: { expressions: paths.map(p => ({
+      dimensionFilter: { orGroup: { expressions: paths.map((p: string) => ({
         filter: { fieldName:'pagePath', stringFilter:{ matchType:'CONTAINS', value:p } }
       }))}},
     },
@@ -60,7 +60,7 @@ const worker = new Worker('ga4-poller', async (job) => {
 
     if (conversions > 0) { skipped++; continue }
 
-    const form = forms.find(f => pagePath.includes(f.slug))
+    const form = forms.find((f: { slug: string; id: string; departmentId: string }) => pagePath.includes(f.slug))
     if (!form) { skipped++; continue }
 
     const gaClientId = `ga_${sessionId}`

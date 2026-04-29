@@ -1,6 +1,7 @@
 // ── email.ts ──────────────────────────────────────────────────────────────────
 import { Resend } from 'resend'
-import type { Lead } from '@dams/db'
+import { Prisma } from '@dams/db'
+type Lead = Prisma.LeadGetPayload<Record<string, never>>
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = `${process.env.EMAIL_FROM_NAME ?? 'Graduate Admissions'} <${process.env.EMAIL_FROM ?? 'noreply@yourdomain.com'}>`

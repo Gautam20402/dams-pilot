@@ -1,5 +1,6 @@
 import jsforce, { type Connection } from 'jsforce'
-import type { Lead } from '@dams/db'
+import { Prisma } from '@dams/db'
+type Lead = Prisma.LeadGetPayload<Record<string, never>>
 import { prisma } from '@dams/db'
 import type { SalesforceLeadInput } from '@dams/validators'
 
