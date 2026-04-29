@@ -1,0 +1,6 @@
+{
+  "installCommand": "cd ../.. && pnpm install",
+  "buildCommand": "cd ../.. && pnpm --filter @dams/web build",
+  "outputDirectory": "apps/web/.next",
+  "framework": "nextjs"
+}
