@@ -9,7 +9,15 @@ export async function formsRoutes(fastify: FastifyInstance) {
   fastify.get('/public/:slug', async (req, reply) => {
     const { slug } = req.params as { slug:string }
     const form = await prisma.form.findUnique({ where:{ slug },
-      select:{ id:true, name:true, slug:true, schemaJson:true, departmentId:true, status:true } })
+      select:{
+        id:true,
+        name:true,
+        slug:true,
+        schemaJson:true,
+        departmentId:true,
+        status:true,
+        department: { select: { id:true, name:true, slug:true } },
+      } })
     if (!form || form.status!=='active')
       return reply.status(404).send({ success:false, error:'Form not found or inactive', code:'NOT_FOUND' })
     return reply.send({ success:true, data:form })
