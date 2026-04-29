@@ -103,6 +103,8 @@ export default function FormsPage() {
 
   const { data } = useForms()
   const forms = data?.data ?? []
+  const currentForm = editingFormId ? (forms as any[]).find(f => String(f.id) === String(editingFormId)) : null
+  const isPublished = Boolean(currentForm?.slug)
   const { data: deptData } = useDepartments()
   const departments: { id: string; name: string; slug: string }[] = deptData?.data ?? []
   const { mutate: createForm, isPending: creating } = useCreateForm()
@@ -113,6 +115,8 @@ export default function FormsPage() {
 
   const selectedField = fields.find(f => f.id === selected)
   const displayFormTitle = formTitle.trim() ? `${formName} — ${formTitle}` : formName
+  const primaryActionLabel = isPublished ? 'Update form' : 'Publish form'
+  const primaryActionBusyLabel = isPublished ? 'Updating…' : 'Publishing…'
 
   useEffect(() => {
     if (didInitFromUrl) return
@@ -381,17 +385,19 @@ export default function FormsPage() {
         </div>
       )}
       {/* Topbar */}
-      <div className="h-13 bg-white border-b border-gray-200 flex items-center px-5 gap-3 shrink-0">
-        <div className="w-7 h-7 bg-gray-900 rounded flex items-center justify-center text-white text-xs font-bold">D</div>
-        <span className="font-semibold text-sm">Form Builder</span>
-        <div className="w-px h-4 bg-gray-200" />
-        <div className={`w-2 h-2 rounded-full ${saved ? 'bg-green-500' : 'bg-amber-400'}`} />
-        <span className="text-xs text-gray-400">{saved ? 'Saved' : 'Saving…'}</span>
-        <div className="ml-auto flex gap-2">
+      <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between sticky top-0 z-10 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 bg-gray-900 rounded flex items-center justify-center text-white text-xs font-bold">D</div>
+          <span className="font-semibold text-gray-900">Form Builder</span>
+          <span className="text-gray-300">|</span>
+          <div className={`w-2 h-2 rounded-full ${saved ? 'bg-green-500' : 'bg-amber-400'}`} />
+          <span className="text-xs text-gray-400">{saved ? 'Saved' : 'Saving…'}</span>
+        </div>
+        <div className="flex items-center gap-2">
           <a href="/admin/dashboard" className="btn btn-outline btn-sm">← Dashboard</a>
           <button className="btn btn-outline btn-sm" onClick={logout}>Logout</button>
           <button className="btn btn-dark btn-sm" disabled={creating || updating} onClick={handlePublish}>
-            {creating || updating ? 'Publishing…' : 'Publish form'}
+            {creating || updating ? primaryActionBusyLabel : primaryActionLabel}
           </button>
         </div>
       </div>
