@@ -168,7 +168,7 @@ export async function leadsRoutes(fastify: FastifyInstance) {
       prisma.lead.aggregate({ _avg:{ completionPct:true }, where:w }),
     ])
     const outreach = await prisma.outreachLog.count({ where: deptId ? { lead:{ departmentId:deptId } } : {} })
-    const captured = bySource.filter(s=>['ga_poll','partial_save'].includes(s.source)).reduce((n,s)=>n+s._count.source,0)
+    const captured = bySource.filter((s: { source: string; _count: { source: number } })=>['ga_poll','partial_save'].includes(s.source)).reduce((n: number, s: { _count: { source: number } })=>n+s._count.source,0)
 
     return reply.send({ success:true, data:{
       total,
