@@ -3,28 +3,38 @@ import { api } from "@/lib/api";
 
 // ── Leads ──────────────────────────────────────────────────────────────────────
 export function useLeads(params?: Record<string, string>) {
-  return useQuery({
+  return useQuery<any>({
     queryKey: ["leads", params],
     queryFn: () => api.getLeads(params),
-    staleTime: 0,
-    refetchInterval: 10_000,
-    refetchOnWindowFocus: true,
+    // Leads don't need aggressive polling; it hurts perceived performance.
+    // Keep cached data for a bit and refetch only on explicit user action.
+    staleTime: 5 * 60_000,
+    gcTime: 5 * 60_000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    placeholderData: (prev: any) => prev,
   });
 }
 export function useLead(id: string) {
-  return useQuery({
+  return useQuery<any>({
     queryKey: ["lead", id],
     queryFn: () => api.getLead(id),
     enabled: !!id,
+    staleTime: 30_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 export function useLeadStats() {
-  return useQuery({
+  return useQuery<any>({
     queryKey: ["lead-stats"],
     queryFn: () => api.getLeadStats(),
-    staleTime: 0,
-    refetchInterval: 10_000,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 export function useUpdateLeadStatus() {
@@ -47,24 +57,38 @@ export function useUpdateLeadStatus() {
 }
 
 // ── Forms ──────────────────────────────────────────────────────────────────────
-export function useForms(params?: Record<string, string>) {
-  return useQuery({
+export function useForms(
+  params?: Record<string, string>,
+  opts?: { enabled?: boolean },
+) {
+  return useQuery<any>({
     queryKey: ["forms", params],
     queryFn: () => api.getForms(params),
+    enabled: opts?.enabled ?? true,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 export function useForm(id: string) {
-  return useQuery({
+  return useQuery<any>({
     queryKey: ["form", id],
     queryFn: () => api.getForm(id),
     enabled: !!id,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 export function usePublicForm(slug: string) {
-  return useQuery({
+  return useQuery<any>({
     queryKey: ["public-form", slug],
     queryFn: () => api.getPublicForm(slug),
     enabled: !!slug,
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 export function useCreateForm() {
@@ -92,9 +116,13 @@ export function useUpdateForm() {
 
 // ── Departments ────────────────────────────────────────────────────────────────
 export function useDepartments() {
-  return useQuery({
+  return useQuery<any>({
     queryKey: ["departments"],
     queryFn: () => api.getDepartments(),
+    staleTime: 30 * 60_000,
+    gcTime: 2 * 60 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 

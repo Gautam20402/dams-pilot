@@ -1,10 +1,12 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLead, useLeads, useLeadStats, useUpdateLeadStatus, useSendEmail, useForms } from '@/hooks'
 import { useClerk, useUser } from '@clerk/nextjs'
 import { ROLE_PERMISSIONS } from '@dams/types'
 import type { Lead, UserRole, LeadStatus } from '@dams/types'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
+import { api } from '@/lib/api'
 
 const ALL_STATUSES: LeadStatus[] = ['new', 'partial', 'contacted', 'in_progress', 'submitted', 'dropped', 'converted']
 
@@ -331,23 +333,33 @@ export default function DashboardPage() {
   const { user } = useUser()
   const role = (user?.publicMetadata?.role as UserRole) ?? 'CALLER'
   const perms = ROLE_PERMISSIONS[role]
+  const qc = useQueryClient()
 
   const [section, setSection] = useState<'leads' | 'forms'>('leads')
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const queryParams = { ...filters }
-  const { data, isLoading, refetch } = useLeads(queryParams)
+  const { data, isLoading, isFetching, refetch } = useLeads(filters)
   const { data: statsData } = useLeadStats()
   const { mutate: updateStatus } = useUpdateLeadStatus()
   const { mutate: sendEmail, isPending: emailPending } = useSendEmail()
-  const { data: formsData } = useForms()
+  // Only fetch forms when the user is on the Forms section.
+  const { data: formsData } = useForms(undefined, { enabled: section === 'forms' })
   const leads: Lead[] = data?.data ?? []
   const { data: selectedLeadResp, isLoading: selectedLeadLoading } = useLead(selectedId ?? '')
   const selectedLead: Lead | null = (selectedLeadResp as any)?.data ?? null
   const pagination = data?.pagination
   const stats = statsData?.data
   const forms = formsData?.data ?? []
+
+  // Prefetch forms once on initial dashboard load so switching tabs is instant.
+  useEffect(() => {
+    qc.prefetchQuery({
+      queryKey: ['forms', undefined],
+      queryFn: () => api.getForms(undefined),
+      staleTime: 5 * 60_000,
+    })
+  }, [qc])
 
   function setF(k: string, v: string) {
     setFilters(p => v ? { ...p, [k]: v } : Object.fromEntries(Object.entries(p).filter(([key]) => key !== k)))
@@ -445,14 +457,6 @@ export default function DashboardPage() {
               {/* Filters */}
               <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 mb-4 flex items-center gap-3 flex-wrap shadow-sm">
                 <input className="input w-48 text-xs" placeholder="Search name, email, ID…" onChange={e => setF('search', e.target.value)} />
-                <select className="input w-36 text-xs" onChange={e => setF('departmentId', e.target.value)}>
-                  <option value="">All departments</option>
-                  <option value="computer-science">Computer Science</option>
-                  <option value="business">Business</option>
-                  <option value="mechanical">Mechanical</option>
-                  <option value="psychology">Psychology</option>
-                  <option value="design">Design</option>
-                </select>
                 <select className="input w-36 text-xs" onChange={e => setF('source', e.target.value)}>
                   <option value="">All sources</option>
                   <option value="ga_poll">GA4 poll</option>
@@ -473,7 +477,7 @@ export default function DashboardPage() {
                 <div className={[showDetails ? 'hidden md:block md:w-[58%] lg:w-[62%]' : 'w-full'].join(' ')}>
                   {/* Mobile cards */}
                   <div className="md:hidden space-y-2">
-                    {isLoading ? (
+                    {isLoading || isFetching ? (
                       <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-8 text-center text-sm text-gray-400">Loading…</div>
                     ) : leads.length === 0 ? (
                       <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-10 text-center text-gray-400">
@@ -525,7 +529,7 @@ export default function DashboardPage() {
                           </div>
                         ))}
                       </div>
-                      {isLoading ? (
+                      {isLoading || isFetching ? (
                         <div className="text-center py-16 text-sm text-gray-400">Loading…</div>
                       ) : leads.length === 0 ? (
                         <div className="text-center py-16 text-gray-400">
