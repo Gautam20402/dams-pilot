@@ -3,8 +3,8 @@ import { prisma, Prisma } from '@dams/db'
 import { PartialSaveSchema, UpdateLeadStatusSchema, LeadFiltersSchema } from '@dams/validators'
 import { requirePermission, scopeToDepartment } from '../middleware/auth.js'
 import { salesforceService } from '../services/salesforce.js'
+import { salesforceBackendService } from '../services/salesforce-backend.js'
 import { emailService } from '../services/email.js'
-import type { UserRole } from '@dams/types'
 
 export async function leadsRoutes(fastify: FastifyInstance) {
 
@@ -60,7 +60,52 @@ export async function leadsRoutes(fastify: FastifyInstance) {
       data:  { status:'submitted', completionPct:100, submittedAt:new Date() },
     })
     await prisma.leadEvent.create({ data:{ leadId, eventType:'form_submitted', metadata:{ source:'public_form' } } })
-    return reply.send({ success:true, data:{ id:updated.id, status:updated.status } })
+
+    // Also submit to Salesforce backend (external API) and return the full response body.
+    // This does not block form submission success; failures are returned as `salesforceBackend.error`.
+    const externalLeadId = `web_${updated.id}`
+    let salesforceBackend: any = null
+    try {
+      const payload = salesforceBackendService.buildPayload({
+        externalLeadId,
+        dataJson: updated.dataJson,
+        completionPct: 100,
+        utm: {
+          source: updated.utmSource,
+          medium: updated.utmMedium,
+          campaign: updated.utmCampaign,
+          content: updated.utmContent,
+          term: updated.utmTerm,
+        },
+      })
+      const body = await salesforceBackendService.submitForm(payload)
+      salesforceBackend = { success:true, externalLeadId, body }
+
+      // Persist Salesforce record id if present
+      const recordId = typeof (body as any)?.recordId === 'string' ? (body as any).recordId : undefined
+      if (recordId) {
+        await prisma.lead.update({ where:{ id:updated.id }, data:{ sfLeadId: recordId } })
+        await prisma.leadEvent.create({
+          data:{ leadId:updated.id, eventType:'salesforce_backend_submitted', metadata:{ externalLeadId, recordId } },
+        })
+      } else {
+        await prisma.leadEvent.create({
+          data:{ leadId:updated.id, eventType:'salesforce_backend_submitted', metadata:{ externalLeadId } },
+        })
+      }
+    } catch (e: any) {
+      fastify.log.error(e)
+      salesforceBackend = { success:false, externalLeadId, error: e?.message ?? 'Salesforce backend submit failed', details: e?.details }
+      await prisma.leadEvent.create({
+        data:{ leadId:updated.id, eventType:'salesforce_backend_failed', metadata:{ externalLeadId, error: e?.message } },
+      })
+    }
+
+    return reply.send({
+      success:true,
+      data:{ id:updated.id, status:updated.status },
+      salesforceBackend,
+    })
   })
 
   // PUBLIC — drop-off beacon
