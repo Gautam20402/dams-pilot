@@ -61,55 +61,42 @@ export async function leadsRoutes(fastify: FastifyInstance) {
     })
     await prisma.leadEvent.create({ data:{ leadId, eventType:'form_submitted', metadata:{ source:'public_form' } } })
 
-    // Send confirmation email to applicant
-    const form = updated.formId ? await prisma.form.findUnique({ where:{ id: updated.formId } }) : null
-    emailService.sendConfirmation(updated, form?.name).catch(e => fastify.log.error(e))
-
-    // Also submit to Salesforce backend (external API) and return the full response body.
-    // This does not block form submission success; failures are returned as `salesforceBackend.error`.
+    // Fire email + Salesforce in background — do not block the response
     const externalLeadId = `web_${updated.id}`
-    let salesforceBackend: any = null
-    try {
-      const payload = salesforceBackendService.buildPayload({
-        externalLeadId,
-        dataJson: updated.dataJson,
-        completionPct: 100,
-        utm: {
-          source: updated.utmSource,
-          medium: updated.utmMedium,
-          campaign: updated.utmCampaign,
-          content: updated.utmContent,
-          term: updated.utmTerm,
-        },
-      })
-      const body = await salesforceBackendService.submitForm(payload)
-      salesforceBackend = { success:true, externalLeadId, body }
+    setImmediate(async () => {
+      try {
+        const form = updated.formId ? await prisma.form.findUnique({ where:{ id: updated.formId } }) : null
+        await emailService.sendConfirmation(updated, form?.name)
+      } catch (e) { fastify.log.error(e) }
 
-      // Persist Salesforce record id if present
-      const recordId = typeof (body as any)?.recordId === 'string' ? (body as any).recordId : undefined
-      if (recordId) {
-        await prisma.lead.update({ where:{ id:updated.id }, data:{ sfLeadId: recordId } })
-        await prisma.leadEvent.create({
-          data:{ leadId:updated.id, eventType:'salesforce_backend_submitted', metadata:{ externalLeadId, recordId } },
+      try {
+        const payload = salesforceBackendService.buildPayload({
+          externalLeadId,
+          dataJson: updated.dataJson,
+          completionPct: 100,
+          utm: {
+            source: updated.utmSource,
+            medium: updated.utmMedium,
+            campaign: updated.utmCampaign,
+            content: updated.utmContent,
+            term: updated.utmTerm,
+          },
         })
-      } else {
-        await prisma.leadEvent.create({
-          data:{ leadId:updated.id, eventType:'salesforce_backend_submitted', metadata:{ externalLeadId } },
-        })
+        const body = await salesforceBackendService.submitForm(payload)
+        const recordId = typeof (body as any)?.recordId === 'string' ? (body as any).recordId : undefined
+        if (recordId) {
+          await prisma.lead.update({ where:{ id:updated.id }, data:{ sfLeadId: recordId } })
+          await prisma.leadEvent.create({ data:{ leadId:updated.id, eventType:'salesforce_backend_submitted', metadata:{ externalLeadId, recordId } } })
+        } else {
+          await prisma.leadEvent.create({ data:{ leadId:updated.id, eventType:'salesforce_backend_submitted', metadata:{ externalLeadId } } })
+        }
+      } catch (e: any) {
+        fastify.log.error(e)
+        await prisma.leadEvent.create({ data:{ leadId:updated.id, eventType:'salesforce_backend_failed', metadata:{ externalLeadId, error: e?.message } } }).catch(() => {})
       }
-    } catch (e: any) {
-      fastify.log.error(e)
-      salesforceBackend = { success:false, externalLeadId, error: e?.message ?? 'Salesforce backend submit failed', details: e?.details }
-      await prisma.leadEvent.create({
-        data:{ leadId:updated.id, eventType:'salesforce_backend_failed', metadata:{ externalLeadId, error: e?.message } },
-      })
-    }
-
-    return reply.send({
-      success:true,
-      data:{ id:updated.id, status:updated.status },
-      salesforceBackend,
     })
+
+    return reply.send({ success:true, data:{ id:updated.id, status:updated.status } })
   })
 
   // PUBLIC — drop-off beacon
