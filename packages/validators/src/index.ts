@@ -5,7 +5,7 @@ export const PartialSaveSchema = z.object({
   formId:         z.string().optional(),
   departmentId:   z.string().min(1),
   dataJson:       z.record(z.unknown()).default({}),
-  gaClientId:     z.string().optional(),
+  gaClientId:     z.string().nullish(),
   utmSource:      z.string().optional(),
   utmMedium:      z.string().optional(),
   utmCampaign:    z.string().optional(),

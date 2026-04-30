@@ -161,15 +161,16 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
       return n
     })
     if (value !== '' && value !== null && value !== undefined) filledRef.current.add(key)
-    scheduleSave(next)
     trackEvent('field_change', { field: key, step, slug })
   }
 
   function handleBlur(key: string) {
+    const next = { ...values }
     if (values[key]) {
       setSavedFields(prev => { const s = new Set(prev); s.add(key); return s })
       setTimeout(() => setSavedFields(prev => { const s = new Set(prev); s.delete(key); return s }), 2200)
     }
+    doSave(next)
     trackEvent('field_blur', { field: key, step, slug })
   }
 
