@@ -70,9 +70,11 @@ export async function leadsRoutes(fastify: FastifyInstance) {
       } catch (e) { fastify.log.error(e) }
 
       try {
+        const dept = await prisma.department.findUnique({ where:{ id: updated.departmentId } })
         const payload = salesforceBackendService.buildPayload({
           externalLeadId,
           dataJson: updated.dataJson,
+          departmentName: dept?.name,
           completionPct: 100,
           utm: {
             source: updated.utmSource,

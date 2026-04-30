@@ -4,6 +4,7 @@ type SalesforceBackendSubmitPayload = {
     firstName: string
     lastName: string
     company: string
+    department?: string
     email?: string
     phone?: string
     status?: string
@@ -46,6 +47,7 @@ export const salesforceBackendService = {
   buildPayload(input: {
     externalLeadId: string
     dataJson: unknown
+    departmentName?: string | null
     completionPct?: number | null
     utm?: {
       source?: string | null
@@ -61,6 +63,7 @@ export const salesforceBackendService = {
       firstName: dj.first_name ?? '',
       lastName: dj.last_name ?? 'Unknown',
       company: 'ABM Technologies',
+      department: input.departmentName ?? undefined,
       email: dj.email,
       phone: dj.phone,
       status: dj.status ?? 'Open - Not Contacted',
