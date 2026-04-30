@@ -225,7 +225,18 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
   if (!form) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-gray-400">Form not found or inactive.</div></div>
   if (submitted) return <Confirmation leadId={leadId!} formName={form.name} />
 
-  const allFields: Field[] = (form.schemaJson as any).fields ?? []
+  const MANDATORY_FIELDS: Field[] = [
+    { id: '__first_name', key: 'first_name', type: 'text',  label: 'First Name',     required: true,  placeholder: 'Enter your first name' },
+    { id: '__last_name',  key: 'last_name',  type: 'text',  label: 'Last Name',      required: true,  placeholder: 'Enter your last name' },
+    { id: '__email',      key: 'email',      type: 'email', label: 'Email Address',  required: true,  placeholder: 'Enter your email' },
+    { id: '__phone',      key: 'phone',      type: 'tel',   label: 'Phone Number',   required: true,  placeholder: 'Enter your phone number' },
+  ]
+  const schemaFields: Field[] = (form.schemaJson as any).fields ?? []
+  const mandatoryKeys = new Set(['first_name', 'last_name', 'email', 'phone'])
+  const allFields: Field[] = [
+    ...MANDATORY_FIELDS,
+    ...schemaFields.filter((f: Field) => !mandatoryKeys.has(f.key)),
+  ]
   const STEP_SIZE = 6
   const pages = []
   for (let i = 0; i < allFields.length; i += STEP_SIZE) pages.push(allFields.slice(i, i + STEP_SIZE))

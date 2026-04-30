@@ -60,7 +60,7 @@ export const salesforceBackendService = {
     const mandatoryFields = {
       firstName: dj.first_name ?? '',
       lastName: dj.last_name ?? 'Unknown',
-      company: dj.company ?? 'Applicant',
+      company: 'ABM Technologies',
       email: dj.email,
       phone: dj.phone,
       status: dj.status ?? 'Open - Not Contacted',
