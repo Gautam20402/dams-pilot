@@ -34,18 +34,6 @@ function html(body: string) {
   </body></html>`
 }
 
-// Maps department name keywords to program labels
-function getProgramLabel(departmentName: string): string {
-  const n = departmentName.toLowerCase()
-  if (n.includes('computer') || n.includes('cs') || n.includes('software')) return 'Master of Science in Computer Science'
-  if (n.includes('business') || n.includes('mba')) return 'Master of Business Administration'
-  if (n.includes('data') || n.includes('analytics')) return 'Master of Science in Data Science'
-  if (n.includes('engineer')) return 'Master of Engineering'
-  if (n.includes('health') || n.includes('medical')) return 'Master of Health Administration'
-  if (n.includes('education')) return 'Master of Education'
-  return `Graduate Program — ${departmentName}`
-}
-
 export const emailService = {
   async sendCustom(to: string, subject: string, body: string) {
     const transporter = createTransport()
@@ -53,10 +41,10 @@ export const emailService = {
     return { id: info.messageId }
   },
 
-  async sendConfirmation(lead: Lead, departmentName?: string) {
+  async sendConfirmation(lead: Lead, formTitle?: string) {
     if (!lead.email) return
     const name = lead.firstName ?? 'Applicant'
-    const program = departmentName ? getProgramLabel(departmentName) : 'our graduate program'
+    const program = formTitle ?? 'our graduate program'
     const refId = lead.id.slice(0, 8).toUpperCase()
 
     return this.sendCustom(
@@ -83,10 +71,10 @@ ABM Technologies`
     )
   },
 
-  async sendConversionCongratulations(lead: Lead, departmentName?: string) {
+  async sendConversionCongratulations(lead: Lead, formTitle?: string) {
     if (!lead.email) return
     const name = lead.firstName ?? 'Applicant'
-    const program = departmentName ? getProgramLabel(departmentName) : 'our graduate program'
+    const program = formTitle ?? 'our graduate program'
 
     return this.sendCustom(
       lead.email,

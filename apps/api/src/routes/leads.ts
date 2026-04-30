@@ -62,8 +62,8 @@ export async function leadsRoutes(fastify: FastifyInstance) {
     await prisma.leadEvent.create({ data:{ leadId, eventType:'form_submitted', metadata:{ source:'public_form' } } })
 
     // Send confirmation email to applicant
-    const dept = await prisma.department.findUnique({ where:{ id: updated.departmentId } })
-    emailService.sendConfirmation(updated, dept?.name).catch(e => fastify.log.error(e))
+    const form = updated.formId ? await prisma.form.findUnique({ where:{ id: updated.formId } }) : null
+    emailService.sendConfirmation(updated, form?.name).catch(e => fastify.log.error(e))
 
     // Also submit to Salesforce backend (external API) and return the full response body.
     // This does not block form submission success; failures are returned as `salesforceBackend.error`.
@@ -214,8 +214,8 @@ export async function leadsRoutes(fastify: FastifyInstance) {
 
     // Send congratulations email when status changes to converted
     if (b.data.status === 'converted' && lead.status !== 'converted') {
-      const dept = await prisma.department.findUnique({ where:{ id: updated.departmentId } })
-      emailService.sendConversionCongratulations(updated, dept?.name).catch(e => fastify.log.error(e))
+      const form = updated.formId ? await prisma.form.findUnique({ where:{ id: updated.formId } }) : null
+      emailService.sendConversionCongratulations(updated, form?.name).catch(e => fastify.log.error(e))
     }
 
     return reply.send({ success:true, data:updated })
