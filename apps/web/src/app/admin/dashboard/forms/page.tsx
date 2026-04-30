@@ -12,6 +12,13 @@ interface Field {
 
 const MANDATORY_KEYS = new Set(['first_name', 'last_name', 'email', 'phone'])
 
+const MANDATORY_BASE_FIELDS = [
+  { type: 'text',  label: 'First Name',    key: 'first_name', required: true,  validations: {} },
+  { type: 'text',  label: 'Last Name',     key: 'last_name',  required: true,  validations: {} },
+  { type: 'email', label: 'Email Address', key: 'email',      required: true,  validations: {} },
+  { type: 'tel',   label: 'Phone Number',  key: 'phone',      required: true,  validations: {} },
+]
+
 const FIELD_TYPES = [
   { type: 'text', icon: 'T', label: 'Short text', hint: 'Single line' },
   { type: 'textarea', icon: '≡', label: 'Long text', hint: 'Essay / multi-line' },
@@ -144,7 +151,8 @@ export default function FormsPage() {
 
   function switchDept(d: string) {
     setDept(d)
-    setFields((DEPT_PRESETS[d] ?? []).map(f => ({ ...f, id: uid() })))
+    const preset = (DEPT_PRESETS[d] ?? []).filter((f: any) => !MANDATORY_KEYS.has(f.key))
+    setFields([...MANDATORY_BASE_FIELDS, ...preset].map(f => ({ ...f, id: uid() })))
     const full = getDeptFormName(d)
     const [n, t] = full.split('—').map(s => s.trim())
     setFormName(n || full)
@@ -158,7 +166,7 @@ export default function FormsPage() {
     // Create mode: start a brand new (unsaved) form
     setFormName('')
     setFormTitle('')
-    setFields([])
+    setFields(MANDATORY_BASE_FIELDS.map(f => ({ ...f, id: uid() })))
     triggerSave()
   }
 
@@ -174,7 +182,7 @@ export default function FormsPage() {
     if (deptSlug) setDept(deptSlug)
 
     const schemaFields = (((form?.schemaJson as any)?.fields ?? []) as Array<Partial<Field>>)
-    const nextFields: Field[] = schemaFields.map(sf => ({
+    const mappedFields: Field[] = schemaFields.map(sf => ({
       id: uid(),
       type: String(sf.type ?? 'text'),
       label: String(sf.label ?? ''),
@@ -185,6 +193,9 @@ export default function FormsPage() {
       options: Array.isArray(sf.options) ? sf.options.map(o => String(o)) : [],
       validations: (sf.validations ?? {}) as Record<string, unknown>,
     }))
+    const existingKeys = new Set(mappedFields.map(f => f.key))
+    const missingMandatory = MANDATORY_BASE_FIELDS.filter(f => !existingKeys.has(f.key)).map(f => ({ ...f, id: uid() }))
+    const nextFields = [...missingMandatory, ...mappedFields.filter(f => !MANDATORY_KEYS.has(f.key)), ...mappedFields.filter(f => MANDATORY_KEYS.has(f.key))]
     setFields(nextFields)
     triggerSave()
   }
