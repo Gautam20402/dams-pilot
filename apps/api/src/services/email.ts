@@ -1,10 +1,20 @@
-// ── email.ts ──────────────────────────────────────────────────────────────────
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import { Prisma } from '@dams/db'
 type Lead = Prisma.LeadGetPayload<Record<string, never>>
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM = `${process.env.EMAIL_FROM_NAME ?? 'Graduate Admissions'} <${process.env.EMAIL_FROM ?? 'noreply@yourdomain.com'}>`
+function createTransport() {
+  return nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  })
+}
+
+const FROM = `${process.env.EMAIL_FROM_NAME ?? 'Graduate Admissions'} <${process.env.SMTP_USER ?? ''}>`
 
 function html(text: string) {
   const lines = text.split('\n').map(l =>
@@ -15,9 +25,9 @@ function html(text: string) {
 
 export const emailService = {
   async sendCustom(to: string, subject: string, body: string) {
-    const { data, error } = await resend.emails.send({ from:FROM, to, subject, html:html(body), text:body })
-    if (error) throw new Error(`Resend: ${error.message}`)
-    return { id: data!.id }
+    const transporter = createTransport()
+    const info = await transporter.sendMail({ from: FROM, to, subject, html: html(body), text: body })
+    return { id: info.messageId }
   },
   async sendDropOff(lead: Lead) {
     if (!lead.email) return
