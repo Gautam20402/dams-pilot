@@ -37,6 +37,8 @@ function pickDynamicFields(dj: Record<string, string>) {
   for (const [k, v] of Object.entries(dj)) {
     if (!v) continue
     if (excluded.has(k)) continue
+    // Only include valid Salesforce custom field names (must end with __c)
+    if (!k.endsWith('__c')) continue
     dynamic[k] = v
   }
 

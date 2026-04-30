@@ -62,7 +62,8 @@ export async function leadsRoutes(fastify: FastifyInstance) {
     await prisma.leadEvent.create({ data:{ leadId, eventType:'form_submitted', metadata:{ source:'public_form' } } })
 
     // Fire email + Salesforce in background — do not block the response
-    const externalLeadId = `web_${updated.id}`
+    // Use a timestamp suffix so re-submissions never collide on externalLeadId
+    const externalLeadId = `web_${updated.id}_${Date.now()}`
     setImmediate(async () => {
       try {
         const form = updated.formId ? await prisma.form.findUnique({ where:{ id: updated.formId } }) : null
@@ -70,6 +71,13 @@ export async function leadsRoutes(fastify: FastifyInstance) {
       } catch (e) { fastify.log.error(e) }
 
       try {
+        // Skip if already successfully pushed to Salesforce
+        const current = await prisma.lead.findUnique({ where:{ id: updated.id }, select:{ sfLeadId:true } })
+        if (current?.sfLeadId) {
+          fastify.log.info({ leadId: updated.id, sfLeadId: current.sfLeadId }, 'Salesforce already submitted, skipping')
+          return
+        }
+
         const dept = await prisma.department.findUnique({ where:{ id: updated.departmentId } })
         const payload = salesforceBackendService.buildPayload({
           externalLeadId,
