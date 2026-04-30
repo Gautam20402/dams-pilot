@@ -10,6 +10,8 @@ interface Field {
   options?: string[]; validations?: Record<string, unknown>
 }
 
+const MANDATORY_KEYS = new Set(['first_name', 'last_name', 'email', 'phone'])
+
 const FIELD_TYPES = [
   { type: 'text', icon: 'T', label: 'Short text', hint: 'Single line' },
   { type: 'textarea', icon: '≡', label: 'Long text', hint: 'Essay / multi-line' },
@@ -283,6 +285,8 @@ export default function FormsPage() {
   }
 
   function deleteField(id: string) {
+    const field = fields.find(f => f.id === id)
+    if (field && MANDATORY_KEYS.has(field.key)) return
     setFields(prev => prev.filter(f => f.id !== id))
     if (selected === id) setSelected(null)
     triggerSave()
@@ -490,8 +494,11 @@ export default function FormsPage() {
                   <span className={`text-xs font-mono px-2 py-0.5 rounded ${f.required ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-400'}`}>
                     {f.required ? 'required' : 'optional'}
                   </span>
-                  <button onClick={e => { e.stopPropagation(); duplicateField(f.id) }} className="w-6 h-6 rounded hover:bg-gray-100 flex items-center justify-center text-gray-400 text-xs">⧉</button>
-                  <button onClick={e => { e.stopPropagation(); deleteField(f.id) }} className="w-6 h-6 rounded hover:bg-red-50 flex items-center justify-center text-red-400 text-xs">✕</button>
+                  {!MANDATORY_KEYS.has(f.key) && <button onClick={e => { e.stopPropagation(); duplicateField(f.id) }} className="w-6 h-6 rounded hover:bg-gray-100 flex items-center justify-center text-gray-400 text-xs">⧉</button>}
+                  {MANDATORY_KEYS.has(f.key)
+                    ? <span className="text-xs text-blue-400 px-1">locked</span>
+                    : <button onClick={e => { e.stopPropagation(); deleteField(f.id) }} className="w-6 h-6 rounded hover:bg-red-50 flex items-center justify-center text-red-400 text-xs">✕</button>
+                  }
                 </div>
                 {/* Field preview */}
                 {f.type === 'heading' ? (
@@ -614,8 +621,11 @@ export default function FormsPage() {
               )}
 
               <div className="flex gap-2 mt-6 border-t border-gray-100 pt-4">
-                <button className="btn btn-outline btn-sm flex-1 text-xs" onClick={() => duplicateField(selectedField.id)}>Duplicate</button>
-                <button className="btn-danger flex-1 text-xs" onClick={() => deleteField(selectedField.id)}>Delete</button>
+                {!MANDATORY_KEYS.has(selectedField.key) && <button className="btn btn-outline btn-sm flex-1 text-xs" onClick={() => duplicateField(selectedField.id)}>Duplicate</button>}
+                {MANDATORY_KEYS.has(selectedField.key)
+                  ? <p className="text-xs text-blue-500 text-center w-full py-1">This field is required on all forms and cannot be removed.</p>
+                  : <button className="btn-danger flex-1 text-xs" onClick={() => deleteField(selectedField.id)}>Delete</button>
+                }
               </div>
             </div>
           )}
