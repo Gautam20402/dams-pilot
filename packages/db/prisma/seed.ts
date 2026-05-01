@@ -1,5 +1,11 @@
-import { PrismaClient, LeadStatus, LeadSource, UserRole, TeamRole, FormStatus } from '@prisma/client'
+import { PrismaClient, LeadStatus, LeadSource, FormStatus } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+
 const prisma = new PrismaClient()
+
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 10)
+}
 
 async function main() {
   console.log('🌱 Seeding...')
@@ -14,6 +20,32 @@ async function main() {
   ])
   const [cs, biz, mech, psych, design] = depts
   console.log(`✅ ${depts.length} departments`)
+
+  // ── Admin credentials ──────────────────────────────────────────────────────
+  // 1 super admin + 3 department-specific admins
+  const adminCredentials = [
+    { name:'Super Admin',             email:'admin@dams.edu',    password:'Admin@2026',  role:'admin',      departmentId: null      },
+    { name:'CS Department Admin',     email:'cs@dams.edu',       password:'CS@2026',     role:'department', departmentId: cs.id     },
+    { name:'Business Department Admin',email:'business@dams.edu',password:'Biz@2026',   role:'department', departmentId: biz.id    },
+    { name:'Mech Department Admin',   email:'mech@dams.edu',     password:'Mech@2026',   role:'department', departmentId: mech.id   },
+  ]
+
+  for (const cred of adminCredentials) {
+    const passwordHash = await hashPassword(cred.password)
+    await prisma.admin.upsert({
+      where:  { email: cred.email },
+      update: { passwordHash, name: cred.name },
+      create: {
+        name:         cred.name,
+        email:        cred.email,
+        passwordHash,
+        role:         cred.role,
+        departmentId: cred.departmentId,
+      },
+    })
+    console.log(`  👤 ${cred.email} (${cred.role}) — password: ${cred.password}`)
+  }
+  console.log(`✅ 4 admin accounts`)
 
   // ── Forms ──────────────────────────────────────────────────────────────────
   const csForm = await prisma.form.upsert({
@@ -94,6 +126,11 @@ async function main() {
   }
   console.log(`✅ ${demos.length} demo leads`)
   console.log('🎉 Seed complete')
+  console.log('\n📋 Admin credentials:')
+  console.log('  admin@dams.edu     / Admin@2026  (admin — sees all)')
+  console.log('  cs@dams.edu        / CS@2026     (Computer Science)')
+  console.log('  business@dams.edu  / Biz@2026    (Business Administration)')
+  console.log('  mech@dams.edu      / Mech@2026   (Mechanical Engineering)')
 }
 
 main().catch(e=>{console.error(e);process.exit(1)}).finally(()=>prisma.$disconnect())

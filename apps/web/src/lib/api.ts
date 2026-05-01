@@ -1,18 +1,14 @@
 import axios from 'axios'
+import { getToken } from '@/lib/auth'
 
 export const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001',
   headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
 })
 
-apiClient.interceptors.request.use(async (config) => {
-  if (typeof window !== 'undefined') {
-    try {
-      const token = await (window as any).Clerk?.session?.getToken()
-      if (token) config.headers.Authorization = `Bearer ${token}`
-    } catch { /* no session yet */ }
-  }
+apiClient.interceptors.request.use((config) => {
+  const token = getToken()
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
@@ -44,8 +40,8 @@ export const api = {
   logCall:       (d: unknown)                => apiClient.post('/api/outreach/call', d).then(r=>r.data),
   getOutreach:   (leadId: string)            => apiClient.get(`/api/outreach/${leadId}`).then(r=>r.data),
   // Departments
-  getDepartments: () => apiClient.get('/api/departments').then(r=>r.data),
+  getDepartments:   ()           => apiClient.get('/api/departments').then(r=>r.data),
+  createDepartment: (d: unknown) => apiClient.post('/api/departments', d).then(r=>r.data),
   // Auth
-  syncUser:      (d: unknown)                => apiClient.post('/api/auth/sync', d).then(r=>r.data),
-  getMe:         ()                          => apiClient.get('/api/auth/me').then(r=>r.data),
+  getMe:         ()  => apiClient.get('/api/auth/me').then(r=>r.data),
 }

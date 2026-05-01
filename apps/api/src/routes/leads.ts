@@ -21,7 +21,7 @@ export async function leadsRoutes(fastify: FastifyInstance) {
         sessionId:d.sessionId, formId:d.formId, departmentId:d.departmentId,
         status:'partial', source:d.source as any,
         firstName:dj.first_name, lastName:dj.last_name, email:dj.email, phone:dj.phone,
-        dataJson:d.dataJson as any, gaClientId:d.gaClientId,
+        dataJson:d.dataJson as Prisma.InputJsonValue, gaClientId:d.gaClientId,
         utmSource:d.utmSource, utmMedium:d.utmMedium, utmCampaign:d.utmCampaign,
         utmContent:d.utmContent, utmTerm:d.utmTerm,
         lastActivePage:d.lastActivePage, fieldsFilled:d.fieldsFilled, completionPct:d.completionPct,
@@ -29,7 +29,7 @@ export async function leadsRoutes(fastify: FastifyInstance) {
       update: {
         firstName:dj.first_name??undefined, lastName:dj.last_name??undefined,
         email:dj.email??undefined, phone:dj.phone??undefined,
-        dataJson:d.dataJson as any, lastActivePage:d.lastActivePage,
+        dataJson:d.dataJson as Prisma.InputJsonValue, lastActivePage:d.lastActivePage,
         fieldsFilled:d.fieldsFilled, completionPct:d.completionPct,
       },
     })
@@ -61,52 +61,51 @@ export async function leadsRoutes(fastify: FastifyInstance) {
     })
     await prisma.leadEvent.create({ data:{ leadId, eventType:'form_submitted', metadata:{ source:'public_form' } } })
 
-    // Fire email + Salesforce in background — do not block the response
-    // Use a timestamp suffix so re-submissions never collide on externalLeadId
-    const externalLeadId = `web_${updated.id}_${Date.now()}`
-    setImmediate(async () => {
-      try {
-        const form = updated.formId ? await prisma.form.findUnique({ where:{ id: updated.formId } }) : null
-        await emailService.sendConfirmation(updated, form?.name)
-      } catch (e) { fastify.log.error(e) }
+    // Also submit to Salesforce backend (external API) and return the full response body.
+    // This does not block form submission success; failures are returned as `salesforceBackend.error`.
+    const externalLeadId = `web_${updated.id}`
+    let salesforceBackend: any = null
+    try {
+      const payload = salesforceBackendService.buildPayload({
+        externalLeadId,
+        dataJson: updated.dataJson,
+        completionPct: 100,
+        utm: {
+          source: updated.utmSource,
+          medium: updated.utmMedium,
+          campaign: updated.utmCampaign,
+          content: updated.utmContent,
+          term: updated.utmTerm,
+        },
+      })
+      const body = await salesforceBackendService.submitForm(payload)
+      salesforceBackend = { success:true, externalLeadId, body }
 
-      try {
-        // Skip if already successfully pushed to Salesforce
-        const current = await prisma.lead.findUnique({ where:{ id: updated.id }, select:{ sfLeadId:true } })
-        if (current?.sfLeadId) {
-          fastify.log.info({ leadId: updated.id, sfLeadId: current.sfLeadId }, 'Salesforce already submitted, skipping')
-          return
-        }
-
-        const dept = await prisma.department.findUnique({ where:{ id: updated.departmentId } })
-        const payload = salesforceBackendService.buildPayload({
-          externalLeadId,
-          dataJson: updated.dataJson,
-          departmentName: dept?.name,
-          completionPct: 100,
-          utm: {
-            source: updated.utmSource,
-            medium: updated.utmMedium,
-            campaign: updated.utmCampaign,
-            content: updated.utmContent,
-            term: updated.utmTerm,
-          },
+      // Persist Salesforce record id if present
+      const recordId = typeof (body as any)?.recordId === 'string' ? (body as any).recordId : undefined
+      if (recordId) {
+        await prisma.lead.update({ where:{ id:updated.id }, data:{ sfLeadId: recordId } })
+        await prisma.leadEvent.create({
+          data:{ leadId:updated.id, eventType:'salesforce_backend_submitted', metadata:{ externalLeadId, recordId } },
         })
-        const body = await salesforceBackendService.submitForm(payload)
-        const recordId = typeof (body as any)?.recordId === 'string' ? (body as any).recordId : undefined
-        if (recordId) {
-          await prisma.lead.update({ where:{ id:updated.id }, data:{ sfLeadId: recordId } })
-          await prisma.leadEvent.create({ data:{ leadId:updated.id, eventType:'salesforce_backend_submitted', metadata:{ externalLeadId, recordId } } })
-        } else {
-          await prisma.leadEvent.create({ data:{ leadId:updated.id, eventType:'salesforce_backend_submitted', metadata:{ externalLeadId } } })
-        }
-      } catch (e: any) {
-        fastify.log.error(e)
-        await prisma.leadEvent.create({ data:{ leadId:updated.id, eventType:'salesforce_backend_failed', metadata:{ externalLeadId, error: e?.message } } }).catch(() => {})
+      } else {
+        await prisma.leadEvent.create({
+          data:{ leadId:updated.id, eventType:'salesforce_backend_submitted', metadata:{ externalLeadId } },
+        })
       }
-    })
+    } catch (e: any) {
+      fastify.log.error(e)
+      salesforceBackend = { success:false, externalLeadId, error: e?.message ?? 'Salesforce backend submit failed', details: e?.details }
+      await prisma.leadEvent.create({
+        data:{ leadId:updated.id, eventType:'salesforce_backend_failed', metadata:{ externalLeadId, error: e?.message } },
+      })
+    }
 
-    return reply.send({ success:true, data:{ id:updated.id, status:updated.status } })
+    return reply.send({
+      success:true,
+      data:{ id:updated.id, status:updated.status },
+      salesforceBackend,
+    })
   })
 
   // PUBLIC — drop-off beacon
@@ -169,7 +168,7 @@ export async function leadsRoutes(fastify: FastifyInstance) {
       prisma.lead.aggregate({ _avg:{ completionPct:true }, where:w }),
     ])
     const outreach = await prisma.outreachLog.count({ where: deptId ? { lead:{ departmentId:deptId } } : {} })
-    const captured = bySource.filter((s: { source: string; _count: { source: number } })=>['ga_poll','partial_save'].includes(s.source)).reduce((n: number, s: { _count: { source: number } })=>n+s._count.source,0)
+    const captured = bySource.filter(s=>['ga_poll','partial_save'].includes(s.source)).reduce((n,s)=>n+s._count.source,0)
 
     return reply.send({ success:true, data:{
       total,
@@ -205,16 +204,10 @@ export async function leadsRoutes(fastify: FastifyInstance) {
 
     const updated = await prisma.lead.update({ where:{ id }, data:{ status:b.data.status as any } })
     await prisma.leadEvent.create({ data:{
-      leadId:id, actorId:req.userId, eventType:'status_change', note:b.data.note,
+      leadId:id, eventType:'status_change', note:b.data.note,
       beforeState:{ status:lead.status }, afterState:{ status:b.data.status },
+      metadata:{ changedBy: req.adminEmail ?? req.adminId },
     }})
-
-    // Send congratulations email when status changes to converted
-    if (b.data.status === 'converted' && lead.status !== 'converted') {
-      const form = updated.formId ? await prisma.form.findUnique({ where:{ id: updated.formId } }) : null
-      emailService.sendConversionCongratulations(updated, form?.name).catch(e => fastify.log.error(e))
-    }
-
     return reply.send({ success:true, data:updated })
   })
 }

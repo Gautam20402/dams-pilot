@@ -50,19 +50,36 @@ enum OutreachChannel {
 }
 
 model Department {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  description    String?
+  universityName String?  @map("university_name")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   users  User[]
   teams  Team[]
   forms  Form[]
   leads  Lead[]
+  admins Admin[]
 
   @@map("departments")
+}
+
+model Admin {
+  id           String      @id @default(cuid())
+  name         String
+  email        String      @unique
+  passwordHash String      @map("password_hash")
+  role         String      @default("department") // "admin" | "department"
+  departmentId String?     @map("department_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  @@map("admins")
 }
 
 model User {

@@ -1,647 +1,280 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { useForms, useCreateForm, usePublishForm, useUpdateForm, useDepartments } from '@/hooks'
-import { useClerk } from '@clerk/nextjs'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import { useForms, useDepartments, usePublishForm } from '@/hooks'
+import { getAdminPayload } from '@/lib/auth'
+import { useRouter } from 'next/navigation'
 
-interface Field {
-  id: string; type: string; label: string; key: string
-  required: boolean; placeholder?: string; hint?: string
-  options?: string[]; validations?: Record<string, unknown>
+function fmtDate(d: string | Date) {
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const MANDATORY_KEYS = new Set(['first_name', 'last_name', 'email', 'phone'])
-
-const MANDATORY_BASE_FIELDS = [
-  { type: 'text',  label: 'First Name',    key: 'first_name', required: true,  validations: {} },
-  { type: 'text',  label: 'Last Name',     key: 'last_name',  required: true,  validations: {} },
-  { type: 'email', label: 'Email Address', key: 'email',      required: true,  validations: {} },
-  { type: 'tel',   label: 'Phone Number',  key: 'phone',      required: true,  validations: {} },
-]
-
-const FIELD_TYPES = [
-  { type: 'text', icon: 'T', label: 'Short text', hint: 'Single line' },
-  { type: 'textarea', icon: '≡', label: 'Long text', hint: 'Essay / multi-line' },
-  { type: 'email', icon: '@', label: 'Email', hint: 'Validated email' },
-  { type: 'tel', icon: '#', label: 'Phone', hint: 'Tel format' },
-  { type: 'number', icon: '0', label: 'Number', hint: 'Min / max / step' },
-  { type: 'date', icon: '□', label: 'Date', hint: 'Date picker' },
-  { type: 'select', icon: '▾', label: 'Dropdown', hint: 'Single select' },
-  { type: 'radio', icon: '◎', label: 'Radio group', hint: 'Pick one' },
-  { type: 'checkbox', icon: '☑', label: 'Multi-select', hint: 'Pick many' },
-  { type: 'file', icon: '↑', label: 'File upload', hint: 'PDF, DOC, images' },
-  { type: 'url', icon: '⊕', label: 'URL', hint: 'Web address' },
-  { type: 'heading', icon: 'H', label: 'Section header', hint: 'Divider' },
-]
-
-const DEPT_PRESETS: Record<string, Field[]> = {
-  cs: [
-    { id: '1', type: 'text', label: 'First Name', key: 'first_name', required: true, validations: { minLength: 2 } },
-    { id: '2', type: 'text', label: 'Last Name', key: 'last_name', required: true, validations: { minLength: 2 } },
-    { id: '3', type: 'email', label: 'Email Address', key: 'email', required: true, validations: {} },
-    { id: '4', type: 'tel', label: 'Phone Number', key: 'phone', required: true, validations: {} },
-    { id: '5', type: 'number', label: 'GPA (4.0 scale)', key: 'gpa', required: true, validations: { min: 0, max: 4 } },
-    { id: '6', type: 'select', label: 'Degree Earned', key: 'degree', required: true, options: ['BS', 'BA', 'BEng', 'Currently Enrolled'], validations: {} },
-    { id: '7', type: 'number', label: 'GRE Score', key: 'gre_score', required: false, validations: { min: 260, max: 340 } },
-    { id: '8', type: 'checkbox', label: 'Specialization', key: 'specialization', required: true, options: ['AI', 'Data Science', 'Systems', 'Cybersecurity', 'HCI'], validations: {} },
-    { id: '9', type: 'textarea', label: 'Statement of Purpose', key: 'sop', required: true, validations: { minLength: 200, maxLength: 2000 } },
-    { id: '10', type: 'file', label: 'Resume / CV', key: 'resume', required: true, validations: { accept: '.pdf,.doc,.docx', maxSizeMB: 10 } },
-    { id: '11', type: 'file', label: 'Transcript Upload', key: 'transcript', required: true, validations: { accept: '.pdf', maxSizeMB: 10 } },
-  ],
-  business: [
-    { id: '1', type: 'text', label: 'First Name', key: 'first_name', required: true, validations: {} },
-    { id: '2', type: 'text', label: 'Last Name', key: 'last_name', required: true, validations: {} },
-    { id: '3', type: 'email', label: 'Email Address', key: 'email', required: true, validations: {} },
-    { id: '4', type: 'number', label: 'Work Experience (yrs)', key: 'work_exp', required: true, validations: { min: 0, max: 50 } },
-    { id: '5', type: 'text', label: 'Current Employer', key: 'employer', required: true, validations: {} },
-    { id: '6', type: 'text', label: 'Job Title', key: 'job_title', required: true, validations: {} },
-    { id: '7', type: 'number', label: 'GMAT Score', key: 'gmat', required: false, validations: { min: 200, max: 800 } },
-    { id: '8', type: 'textarea', label: 'Leadership Essay', key: 'leadership', required: true, validations: { minLength: 300 } },
-    { id: '9', type: 'file', label: 'Resume / CV', key: 'resume', required: true, validations: { accept: '.pdf,.doc,.docx', maxSizeMB: 10 } },
-  ],
-  mechanical: [
-    { id: '1', type: 'text', label: 'First Name', key: 'first_name', required: true, validations: {} },
-    { id: '2', type: 'text', label: 'Last Name', key: 'last_name', required: true, validations: {} },
-    { id: '3', type: 'email', label: 'Email Address', key: 'email', required: true, validations: {} },
-    { id: '4', type: 'number', label: 'GPA', key: 'gpa', required: true, validations: { min: 0, max: 4 } },
-    { id: '5', type: 'checkbox', label: 'Core Subjects', key: 'core_subjects', required: false, options: ['Thermodynamics', 'Fluid Mechanics', 'Heat Transfer', 'Solid Mechanics'], validations: {} },
-    { id: '6', type: 'textarea', label: 'Statement of Purpose', key: 'sop', required: true, validations: { minLength: 200 } },
-    { id: '7', type: 'file', label: 'Resume / CV', key: 'resume', required: true, validations: { accept: '.pdf,.doc,.docx', maxSizeMB: 10 } },
-  ],
-  psychology: [
-    { id: '1', type: 'text', label: 'First Name', key: 'first_name', required: true, validations: {} },
-    { id: '2', type: 'text', label: 'Last Name', key: 'last_name', required: true, validations: {} },
-    { id: '3', type: 'email', label: 'Email Address', key: 'email', required: true, validations: {} },
-    { id: '4', type: 'radio', label: 'Area of Interest', key: 'psych_area', required: true, options: ['Clinical', 'Cognitive', 'Behavioral', 'Developmental'], validations: {} },
-    { id: '5', type: 'textarea', label: 'Research Experience', key: 'research_exp', required: true, validations: { minLength: 150 } },
-    { id: '6', type: 'textarea', label: 'Statement of Purpose', key: 'sop', required: true, validations: { minLength: 300 } },
-    { id: '7', type: 'file', label: 'Writing Sample', key: 'writing_sample', required: true, validations: { accept: '.pdf,.doc,.docx', maxSizeMB: 20 } },
-  ],
-  design: [
-    { id: '1', type: 'text', label: 'First Name', key: 'first_name', required: true, validations: {} },
-    { id: '2', type: 'text', label: 'Last Name', key: 'last_name', required: true, validations: {} },
-    { id: '3', type: 'email', label: 'Email Address', key: 'email', required: true, validations: {} },
-    { id: '4', type: 'radio', label: 'Preferred Domain', key: 'design_domain', required: true, options: ['UI/UX', 'Architecture', 'Product Design', 'Graphic Design'], validations: {} },
-    { id: '5', type: 'checkbox', label: 'Software Skills', key: 'software_skills', required: true, options: ['Figma', 'AutoCAD', 'Photoshop', 'Illustrator', 'Blender'], validations: {} },
-    { id: '6', type: 'textarea', label: 'Design Statement', key: 'design_statement', required: true, validations: { minLength: 200 } },
-    { id: '7', type: 'file', label: 'Portfolio Upload', key: 'portfolio', required: true, validations: { accept: '.pdf,.zip', maxSizeMB: 50 } },
-  ],
+function StatusChip({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    active:   'bg-emerald-50 text-emerald-700 border-emerald-100',
+    draft:    'bg-slate-100  text-slate-500   border-slate-200',
+    archived: 'bg-red-50     text-red-500     border-red-100',
+  }
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full border ${map[status] ?? map.draft}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${status === 'active' ? 'bg-emerald-500' : status === 'archived' ? 'bg-red-400' : 'bg-slate-400'}`} />
+      {status}
+    </span>
+  )
 }
 
-const DEPT_NAMES: Record<string, string> = {
-  cs: 'Computer Science', business: 'Business Administration',
-  mechanical: 'Mechanical Engineering', psychology: 'Psychology', design: 'Design & Creative Arts',
-}
-
-let counter = 100
-function uid() { return String(++counter) }
-
-export default function FormsPage() {
+export default function FormsListPage() {
   const router = useRouter()
-  const { signOut } = useClerk()
-  const searchParams = useSearchParams()
-  const [dept, setDept] = useState('cs')
-  const [fields, setFields] = useState<Field[]>(() => DEPT_PRESETS.cs.map(f => ({ ...f, id: uid() })))
-  const [selected, setSelected] = useState<string | null>(null)
-  const [formName, setFormName] = useState('MS Computer Science')
-  const [formTitle, setFormTitle] = useState('Fall 2025')
-  const [editingFormId, setEditingFormId] = useState<string | null>(null)
-  const [didInitFromUrl, setDidInitFromUrl] = useState(false)
-  const [dragSrc, setDragSrc] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const admin  = getAdminPayload()
+  const isAdmin = admin?.role === 'admin'
 
-  const { data } = useForms()
-  const forms = data?.data ?? []
-  const currentForm = editingFormId ? (forms as any[]).find(f => String(f.id) === String(editingFormId)) : null
-  const isPublished = Boolean(currentForm?.slug)
-  const { data: deptData } = useDepartments()
-  const departments: { id: string; name: string; slug: string }[] = deptData?.data ?? []
-  const { mutate: createForm, isPending: creating } = useCreateForm()
-  const { mutate: publishForm } = usePublishForm()
-  const { mutate: updateForm, isPending: updating } = useUpdateForm()
-  const [publishedUrl, setPublishedUrl] = useState<string | null>(null)
-  const [copiedModal, setCopiedModal] = useState(false)
+  const [deptFilter, setDeptFilter] = useState<string>('all')
+  const [search, setSearch]         = useState('')
+  const [copiedId, setCopiedId]     = useState<string | null>(null)
 
-  const selectedField = fields.find(f => f.id === selected)
-  const displayFormTitle = formTitle.trim() ? `${formName} — ${formTitle}` : formName
-  const primaryActionLabel = isPublished ? 'Update form' : 'Publish form'
-  const primaryActionBusyLabel = isPublished ? 'Updating…' : 'Publishing…'
+  const { data: formsData, isLoading, refetch } = useForms()
+  const { data: deptData }  = useDepartments()
+  const { mutate: publish } = usePublishForm()
 
-  useEffect(() => {
-    if (didInitFromUrl) return
-    const editId = searchParams.get('edit')
-    const isNew = searchParams.get('new')
+  const departments: any[] = deptData?.data ?? []
+  const allForms: any[]    = formsData?.data ?? []
 
-    if (isNew) {
-      resetNewForm()
-      setDidInitFromUrl(true)
-      return
+  // Filter by dept + search
+  const forms = allForms.filter(f => {
+    const matchDept = !isAdmin
+      ? f.departmentId === admin?.departmentId
+      : deptFilter === 'all' || f.departmentId === deptFilter
+    const q = search.toLowerCase()
+    const matchSearch = !q || f.name?.toLowerCase().includes(q)
+    return matchDept && matchSearch
+  })
+
+  function publicUrl(slug: string) {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    return `${origin}/public/apply/${encodeURIComponent(slug)}`
+  }
+
+  function copyUrl(id: string, slug: string) {
+    void navigator.clipboard.writeText(publicUrl(slug))
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(p => p === id ? null : p), 1800)
+  }
+
+  function openBuilder(mode: 'new', deptId?: string): void
+  function openBuilder(mode: 'edit', formId: string): void
+  function openBuilder(mode: 'new' | 'edit', param?: string) {
+    if (mode === 'new') {
+      router.push(`/admin/dashboard/forms/builder?new=1${param ? `&dept=${param}` : ''}`)
+    } else {
+      router.push(`/admin/dashboard/forms/builder?edit=${param}`)
     }
-
-    if (editId && forms.length > 0) {
-      const target = (forms as any[]).find(f => String(f.id) === String(editId))
-      if (target) loadFormForEdit(target)
-      setDidInitFromUrl(true)
-      return
-    }
-
-    // If there's no relevant param, or forms haven't loaded yet, we'll retry until forms load.
-    if (!editId && !isNew) setDidInitFromUrl(true)
-  }, [didInitFromUrl, searchParams, forms])
-
-  function switchDept(d: string) {
-    setDept(d)
-    const preset = (DEPT_PRESETS[d] ?? []).filter((f: any) => !MANDATORY_KEYS.has(f.key))
-    setFields([...MANDATORY_BASE_FIELDS, ...preset].map(f => ({ ...f, id: uid() })))
-    const full = getDeptFormName(d)
-    const [n, t] = full.split('—').map(s => s.trim())
-    setFormName(n || full)
-    setFormTitle(t || '')
-    setSelected(null)
   }
 
-  function resetNewForm() {
-    setEditingFormId(null)
-    setSelected(null)
-    // Create mode: start a brand new (unsaved) form
-    setFormName('')
-    setFormTitle('')
-    setFields(MANDATORY_BASE_FIELDS.map(f => ({ ...f, id: uid() })))
-    triggerSave()
-  }
-
-  function loadFormForEdit(form: any) {
-    const full = String(form?.name ?? '')
-    const [n, t] = full.split('—').map((s: string) => s.trim())
-    setFormName(n || full || 'Untitled form')
-    setFormTitle(t || '')
-    setEditingFormId(String(form.id))
-    setSelected(null)
-
-    const deptSlug = departments.find(d => d.id === form.departmentId)?.slug
-    if (deptSlug) setDept(deptSlug)
-
-    const schemaFields = (((form?.schemaJson as any)?.fields ?? []) as Array<Partial<Field>>)
-    const mappedFields: Field[] = schemaFields.map(sf => ({
-      id: uid(),
-      type: String(sf.type ?? 'text'),
-      label: String(sf.label ?? ''),
-      key: String(sf.key ?? ''),
-      required: Boolean(sf.required),
-      placeholder: sf.placeholder ? String(sf.placeholder) : undefined,
-      hint: sf.hint ? String(sf.hint) : undefined,
-      options: Array.isArray(sf.options) ? sf.options.map(o => String(o)) : [],
-      validations: (sf.validations ?? {}) as Record<string, unknown>,
-    }))
-    const existingKeys = new Set(mappedFields.map(f => f.key))
-    const missingMandatory = MANDATORY_BASE_FIELDS.filter(f => !existingKeys.has(f.key)).map(f => ({ ...f, id: uid() }))
-    const nextFields = [...missingMandatory, ...mappedFields.filter(f => !MANDATORY_KEYS.has(f.key)), ...mappedFields.filter(f => MANDATORY_KEYS.has(f.key))]
-    setFields(nextFields)
-    triggerSave()
-  }
-
-  function getDepartmentIdFromSlug(slug: string) {
-    const realDept = departments.find(d => d.slug === slug || d.slug === slug.replace('_', '-'))
-    return realDept?.id ?? departments[0]?.id ?? slug
-  }
-
-  function currentSchemaJson() {
-    return { fields: fields.map(({ id: _, ...f }) => f) }
-  }
-
-  function saveDraft(opts?: { onSuccess?: (formId: string, slug?: string) => void }) {
-    const schemaJson = currentSchemaJson()
-
-    if (editingFormId) {
-      updateForm(
-        { id: editingFormId, data: { name: displayFormTitle, schemaJson } },
-        {
-          onSuccess: (res: any) => {
-            opts?.onSuccess?.(editingFormId, res?.data?.slug)
-          },
-        },
-      )
-      return
-    }
-
-    const departmentId = getDepartmentIdFromSlug(dept)
-    createForm(
-      { name: displayFormTitle, departmentId, schemaJson },
-      {
-        onSuccess: (res: any) => {
-          const id = String(res.data.id)
-          setEditingFormId(id)
-          opts?.onSuccess?.(id, res?.data?.slug)
-        },
-      },
-    )
-  }
-
-  function getDeptFormName(d: string) {
-    const map: Record<string, string> = {
-      cs: 'MS Computer Science — Fall 2025', business: 'MBA Full-time — Fall 2025',
-      mechanical: 'MS Mechanical Engineering — Fall 2025', psychology: 'MS Psychology — Fall 2025',
-      design: 'MFA Design — Fall 2025',
-    }
-    return map[d] ?? d
-  }
-
-  function addFieldType(type: string) {
-    const id = uid()
-    const defaults: Record<string, Partial<Field>> = {
-      text: { label: 'Text field', key: 'text_' + id, placeholder: 'Enter text…' },
-      textarea: { label: 'Long text', key: 'text_' + id, placeholder: 'Write here…' },
-      email: { label: 'Email', key: 'email', placeholder: 'you@email.com' },
-      tel: { label: 'Phone', key: 'phone', placeholder: '+1 (555) 000-0000' },
-      number: { label: 'Number', key: 'number_' + id, validations: { min: 0 } },
-      date: { label: 'Date', key: 'date_' + id },
-      select: { label: 'Dropdown', key: 'select_' + id, options: ['Option 1', 'Option 2', 'Option 3'] },
-      radio: { label: 'Radio group', key: 'radio_' + id, options: ['Option A', 'Option B'] },
-      checkbox: { label: 'Multi-select', key: 'multi_' + id, options: ['Option A', 'Option B'] },
-      file: { label: 'File upload', key: 'file_' + id, validations: { accept: '.pdf,.doc,.docx', maxSizeMB: 10 } },
-      url: { label: 'URL', key: 'url_' + id, placeholder: 'https://' },
-      heading: { label: 'Section Heading', key: 'heading_' + id },
-    }
-    const f: Field = { id, type, required: false, validations: {}, options: [], ...defaults[type] } as Field
-    setFields(prev => [...prev, f])
-    setSelected(id)
-    triggerSave()
-  }
-
-  function updateField(id: string, key: string, val: unknown) {
-    setFields(prev => prev.map(f => f.id === id ? { ...f, [key]: val } : f))
-    triggerSave()
-  }
-
-  function updateValidation(id: string, key: string, val: unknown) {
-    setFields(prev => prev.map(f => f.id === id ? { ...f, validations: { ...f.validations, [key]: val === '' ? undefined : val } } : f))
-    triggerSave()
-  }
-
-  function updateOption(id: string, idx: number, val: string) {
-    setFields(prev => prev.map(f => {
-      if (f.id !== id) return f
-      const opts = [...(f.options ?? [])]
-      opts[idx] = val
-      return { ...f, options: opts }
-    }))
-  }
-
-  function addOption(id: string) {
-    setFields(prev => prev.map(f => f.id === id ? { ...f, options: [...(f.options ?? []), 'New option'] } : f))
-  }
-
-  function removeOption(id: string, idx: number) {
-    setFields(prev => prev.map(f => f.id === id ? { ...f, options: (f.options ?? []).filter((_, i) => i !== idx) } : f))
-  }
-
-  function deleteField(id: string) {
-    const field = fields.find(f => f.id === id)
-    if (field && MANDATORY_KEYS.has(field.key)) return
-    setFields(prev => prev.filter(f => f.id !== id))
-    if (selected === id) setSelected(null)
-    triggerSave()
-  }
-
-  function duplicateField(id: string) {
-    const f = fields.find(x => x.id === id)
-    if (!f) return
-    const copy = { ...JSON.parse(JSON.stringify(f)), id: uid(), label: f.label + ' (copy)', key: f.key + '_copy' }
-    const idx = fields.findIndex(x => x.id === id)
-    setFields(prev => { const n = [...prev]; n.splice(idx + 1, 0, copy); return n })
-    triggerSave()
-  }
-
-  // Drag-and-drop reorder
-  function onDragStart(e: React.DragEvent, id: string) { setDragSrc(id); e.dataTransfer.effectAllowed = 'move' }
-  function onDragOver(e: React.DragEvent, id: string) {
-    e.preventDefault()
-    if (!dragSrc || dragSrc === id) return
-    const from = fields.findIndex(f => f.id === dragSrc)
-    const to = fields.findIndex(f => f.id === id)
-    if (from === -1 || to === -1) return
-    setFields(prev => { const n = [...prev]; const [m] = n.splice(from, 1); n.splice(to, 0, m); return n })
-    setDragSrc(id)
-  }
-  function onDragEnd() { setDragSrc(null); triggerSave() }
-
-  function triggerSave() {
-    setSaved(false)
-    setTimeout(() => setSaved(true), 800)
-  }
-
-  function handlePublish() {
-    saveDraft({
-      onSuccess: (formId, slug) => {
-        publishForm(formId, {
-          onSuccess: (pubRes: any) => {
-            const finalSlug = pubRes.data?.slug ?? slug
-            if (finalSlug) setPublishedUrl(`${window.location.origin}/public/apply/${finalSlug}`)
-          },
-        })
-      },
-    })
-  }
-
-  async function copyToClipboard(text: string) {
-    await navigator.clipboard.writeText(text)
-  }
-
-  function copyModalUrl(url: string) {
-    void copyToClipboard(url)
-    setCopiedModal(true)
-    setTimeout(() => setCopiedModal(false), 2000)
-  }
-
-  function logout() {
-    signOut(() => router.push('/auth/sign-in'))
-  }
-
-  const vTags = (f: Field) => {
-    const v = f.validations ?? {}
-    const tags: string[] = []
-    if ((v as any).minLength) tags.push(`min ${(v as any).minLength} chars`)
-    if ((v as any).maxLength) tags.push(`max ${(v as any).maxLength} chars`)
-    if ((v as any).min !== undefined) tags.push(`≥${(v as any).min}`)
-    if ((v as any).max !== undefined) tags.push(`≤${(v as any).max}`)
-    if ((v as any).accept) tags.push((v as any).accept)
-    if ((v as any).maxSizeMB) tags.push(`≤${(v as any).maxSizeMB}MB`)
-    return tags
-  }
+  const deptName = (deptId: string) => departments.find(d => d.id === deptId)?.name ?? '—'
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
-      {/* Published URL modal */}
-      {publishedUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPublishedUrl(null)}>
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm">✓</div>
-                <div>
-                  <div className="font-semibold text-sm">Form published</div>
-                  <div className="text-xs text-gray-400">Share this link with applicants</div>
-                </div>
-              </div>
-              <button onClick={() => setPublishedUrl(null)} className="w-7 h-7 rounded hover:bg-gray-100 flex items-center justify-center text-gray-400">✕</button>
+    <div className="p-5 max-w-screen-xl mx-auto">
+      {/* Page header */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-lg font-bold text-slate-900">Form Builder</h1>
+          <p className="text-sm text-slate-400 mt-0.5">
+            {isAdmin ? 'All department application forms' : 'Your department forms'}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary gap-2"
+          onClick={() => openBuilder('new', isAdmin ? undefined : admin?.departmentId ?? undefined)}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <path d="M8 1v14M1 8h14"/>
+          </svg>
+          New Form
+        </button>
+      </div>
+
+      {/* Stats bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        {[
+          { label: 'Total forms',    val: allForms.length,                                   color: 'text-slate-900'   },
+          { label: 'Published',      val: allForms.filter(f => f.status === 'active').length, color: 'text-emerald-700' },
+          { label: 'Drafts',         val: allForms.filter(f => f.status === 'draft').length,  color: 'text-amber-600'   },
+          { label: 'Archived',       val: allForms.filter(f => f.status === 'archived').length, color: 'text-red-500'  },
+        ].map(k => (
+          <div key={k.label} className="kpi-card">
+            <div className={`kpi-value ${k.color}`}>{k.val}</div>
+            <div className="kpi-label">{k.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 mb-4 flex items-center gap-3 flex-wrap shadow-sm">
+        <div className="relative">
+          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <circle cx="6.5" cy="6.5" r="4.5"/><path d="M11 11l3 3"/>
+          </svg>
+          <input
+            className="input w-52 text-xs pl-8"
+            placeholder="Search forms…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        {isAdmin && (
+          <select
+            className="input w-52 text-xs"
+            value={deptFilter}
+            onChange={e => setDeptFilter(e.target.value)}
+          >
+            <option value="all">All departments</option>
+            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        )}
+        <span className="ml-auto text-xs text-slate-400 font-mono">{forms.length} form{forms.length !== 1 ? 's' : ''}</span>
+        <button className="btn btn-outline btn-sm" onClick={() => void refetch()}>↺ Refresh</button>
+      </div>
+
+      {/* Forms table */}
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        {/* Header */}
+        <div className={`grid ${isAdmin ? 'grid-cols-[1fr_180px_130px_100px_180px]' : 'grid-cols-[1fr_130px_100px_180px]'} px-5 py-3 bg-slate-50 border-b border-slate-100`}>
+          {['Form name', ...(isAdmin ? ['Department'] : []), 'Status', 'Fields', 'Actions'].map(h => (
+            <div key={h} className="table-head">{h}</div>
+          ))}
+        </div>
+
+        {isLoading ? (
+          <div className="py-16 text-center">
+            <span className="w-6 h-6 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin inline-block mb-3" />
+            <div className="text-sm text-slate-400">Loading forms…</div>
+          </div>
+        ) : forms.length === 0 ? (
+          <div className="py-16 text-center text-slate-400">
+            <div className="text-4xl mb-3">📋</div>
+            <div className="text-sm font-medium text-slate-600">
+              {allForms.length === 0 ? 'No forms yet' : 'No forms match your filter'}
             </div>
-            <div className="flex gap-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
-              <span className="text-xs font-mono text-gray-700 flex-1 break-all">{publishedUrl}</span>
+            <div className="text-xs mt-1 mb-4">
+              {allForms.length === 0
+                ? 'Click "New Form" to create your first application form'
+                : 'Try a different search or department filter'}
             </div>
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => copyModalUrl(publishedUrl)}
-                className={`btn flex-1 text-sm py-2 ${copiedModal ? 'bg-green-500 text-white border-green-500' : 'btn-dark'}`}>
-                {copiedModal ? '✓ Copied!' : 'Copy link'}
+            {allForms.length === 0 && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => openBuilder('new', isAdmin ? undefined : admin?.departmentId ?? undefined)}
+              >
+                Create first form
               </button>
-              <a href={publishedUrl} target="_blank" rel="noopener noreferrer"
-                className="btn btn-outline text-sm py-2 px-4">Open ↗</a>
+            )}
+          </div>
+        ) : (
+          forms.map((f: any) => (
+            <div
+              key={f.id}
+              className={`grid ${isAdmin ? 'grid-cols-[1fr_180px_130px_100px_180px]' : 'grid-cols-[1fr_130px_100px_180px]'} px-5 py-4 border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition-colors items-center`}
+            >
+              {/* Name + URL */}
+              <div className="min-w-0 pr-3">
+                <div className="text-sm font-semibold text-slate-900 truncate">{f.name}</div>
+                <div className="text-[11px] text-slate-400 font-mono mt-0.5 truncate">id: {f.id}</div>
+                {f.slug && (
+                  <a
+                    href={publicUrl(f.slug)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-1.5 text-[11px] font-mono text-blue-600 hover:text-blue-800 hover:underline max-w-full truncate"
+                    title={publicUrl(f.slug)}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0"><path d="M7 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9M9 1h6v6M10 6l5-5"/></svg>
+                    <span className="truncate">{publicUrl(f.slug)}</span>
+                  </a>
+                )}
+                {f.publishedAt && (
+                  <div className="text-[11px] text-slate-400 mt-0.5">Published {fmtDate(f.publishedAt)}</div>
+                )}
+              </div>
+
+              {/* Department (admin only) */}
+              {isAdmin && (
+                <div className="min-w-0">
+                  <span className="text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md truncate block max-w-[160px]">
+                    {deptName(f.departmentId)}
+                  </span>
+                </div>
+              )}
+
+              {/* Status */}
+              <div><StatusChip status={f.status ?? 'draft'} /></div>
+
+              {/* Field count */}
+              <div className="text-sm font-mono text-slate-500">
+                {(f.schemaJson as any)?.fields?.length ?? 0} fields
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-xs gap-1"
+                  onClick={() => openBuilder('edit', f.id)}
+                >
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M11 2l3 3-9 9H2v-3L11 2z"/></svg>
+                  Edit
+                </button>
+                {f.slug ? (
+                  <button
+                    type="button"
+                    className={`btn btn-xs gap-1 ${copiedId === f.id ? 'bg-emerald-500 text-white border-emerald-500' : 'btn-outline'}`}
+                    onClick={() => copyUrl(f.id, f.slug)}
+                  >
+                    {copiedId === f.id ? '✓ Copied' : 'Copy link'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-dark gap-1"
+                    onClick={() => openBuilder('edit', f.id)}
+                    title="Open in builder to publish"
+                  >
+                    Publish
+                  </button>
+                )}
+              </div>
             </div>
+          ))
+        )}
+      </div>
+
+      {/* Per-dept quick create (admin only) */}
+      {isAdmin && departments.length > 0 && (
+        <div className="mt-6">
+          <div className="section-label mb-3">Quick create — by department</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {departments.map(d => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => openBuilder('new', d.id)}
+                className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-3.5 text-left hover:border-blue-300 hover:bg-blue-50 transition group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-500 group-hover:bg-blue-100 group-hover:border-blue-200 group-hover:text-blue-700 transition shrink-0">
+                  {d.name[0]}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-slate-800 truncate group-hover:text-blue-800">{d.name}</div>
+                  <div className="text-[11px] text-slate-400 group-hover:text-blue-500">
+                    {allForms.filter(f => f.departmentId === d.id).length} form{allForms.filter(f => f.departmentId === d.id).length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+                <svg className="ml-auto shrink-0 text-slate-300 group-hover:text-blue-400" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 1v14M1 8h14"/></svg>
+              </button>
+            ))}
           </div>
         </div>
       )}
-      {/* Topbar */}
-      <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between sticky top-0 z-10 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 bg-gray-900 rounded flex items-center justify-center text-white text-xs font-bold">D</div>
-          <span className="font-semibold text-gray-900">Form Builder</span>
-          <span className="text-gray-300">|</span>
-          <div className={`w-2 h-2 rounded-full ${saved ? 'bg-green-500' : 'bg-amber-400'}`} />
-          <span className="text-xs text-gray-400">{saved ? 'Saved' : 'Saving…'}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <a href="/admin/dashboard" className="btn btn-outline btn-sm">← Dashboard</a>
-          <button className="btn btn-outline btn-sm" onClick={logout}>Logout</button>
-          <button className="btn btn-dark btn-sm" disabled={creating || updating} onClick={handlePublish}>
-            {creating || updating ? primaryActionBusyLabel : primaryActionLabel}
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-      {/* Palette */}
-      <aside className="w-56 bg-white border-r border-gray-200 overflow-y-auto shrink-0">
-          <div className="p-3">
-            <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Basic fields</div>
-            {FIELD_TYPES.slice(0, 6).map(ft => (
-              <div key={ft.type} onClick={() => addFieldType(ft.type)}
-                className="flex items-center gap-2.5 p-2.5 rounded-lg border border-transparent hover:border-blue-200 hover:bg-blue-50 cursor-pointer mb-1 transition">
-                <span className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-xs font-semibold shrink-0">{ft.icon}</span>
-                <div><div className="text-xs font-medium">{ft.label}</div><div className="text-xs text-gray-400">{ft.hint}</div></div>
-              </div>
-            ))}
-            <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 mt-3">Choice fields</div>
-            {FIELD_TYPES.slice(6, 9).map(ft => (
-              <div key={ft.type} onClick={() => addFieldType(ft.type)}
-                className="flex items-center gap-2.5 p-2.5 rounded-lg border border-transparent hover:border-blue-200 hover:bg-blue-50 cursor-pointer mb-1 transition">
-                <span className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-xs font-semibold shrink-0">{ft.icon}</span>
-                <div><div className="text-xs font-medium">{ft.label}</div><div className="text-xs text-gray-400">{ft.hint}</div></div>
-              </div>
-            ))}
-            <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2 mt-3">Special</div>
-            {FIELD_TYPES.slice(9).map(ft => (
-              <div key={ft.type} onClick={() => addFieldType(ft.type)}
-                className="flex items-center gap-2.5 p-2.5 rounded-lg border border-transparent hover:border-blue-200 hover:bg-blue-50 cursor-pointer mb-1 transition">
-                <span className="w-6 h-6 bg-gray-100 rounded flex items-center justify-center text-xs font-semibold shrink-0">{ft.icon}</span>
-                <div><div className="text-xs font-medium">{ft.label}</div><div className="text-xs text-gray-400">{ft.hint}</div></div>
-              </div>
-            ))}
-          </div>
-      </aside>
-
-        {/* Canvas */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-2xl mx-auto">
-            <div className="card mb-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold">Name and title</div>
-                  <div className="text-xs text-gray-400 mt-0.5">Used for your internal form name and applicant-facing title</div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mt-4">
-                <div>
-                  <label className="label" htmlFor="form_name">Name</label>
-                  <input
-                    id="form_name"
-                    value={formName}
-                    onChange={e => { setFormName(e.target.value); triggerSave() }}
-                    className="input text-sm"
-                    placeholder="e.g. MS Computer Science"
-                  />
-                </div>
-                <div>
-                  <label className="label" htmlFor="form_title">Title</label>
-                  <input
-                    id="form_title"
-                    value={formTitle}
-                    onChange={e => { setFormTitle(e.target.value); triggerSave() }}
-                    className="input text-sm"
-                    placeholder="e.g. Fall 2025"
-                  />
-                </div>
-              </div>
-
-              <div className="text-xs text-gray-400 mt-3">
-                Preview: <span className="font-medium text-gray-700">{displayFormTitle}</span> · {fields.length} fields
-              </div>
-            </div>
-            {fields.length === 0 ? (
-              <div className="border-2 border-dashed border-gray-200 rounded-xl p-16 text-center text-gray-400">
-                <div className="text-3xl mb-2">⊕</div>
-                <div className="text-sm">Click any field type on the left to add it</div>
-              </div>
-            ) : fields.map(f => (
-              <div key={f.id}
-                draggable onDragStart={e => onDragStart(e, f.id)} onDragOver={e => onDragOver(e, f.id)} onDragEnd={onDragEnd}
-                onClick={() => setSelected(f.id === selected ? null : f.id)}
-                className={`bg-white border rounded-lg p-3.5 mb-2 cursor-pointer transition
-                  ${selected === f.id ? 'border-blue-400 ring-2 ring-blue-100' : 'border-gray-200 hover:border-gray-300'}
-                  ${dragSrc === f.id ? 'opacity-40' : ''}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-gray-300 cursor-grab text-base">⠿</span>
-                  <span className="text-xs font-mono bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5 text-gray-500">{f.type}</span>
-                  <span className="text-sm font-medium flex-1">{f.label || 'Untitled'}</span>
-                  <span className={`text-xs font-mono px-2 py-0.5 rounded ${f.required ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-400'}`}>
-                    {f.required ? 'required' : 'optional'}
-                  </span>
-                  {!MANDATORY_KEYS.has(f.key) && <button onClick={e => { e.stopPropagation(); duplicateField(f.id) }} className="w-6 h-6 rounded hover:bg-gray-100 flex items-center justify-center text-gray-400 text-xs">⧉</button>}
-                  {MANDATORY_KEYS.has(f.key)
-                    ? <span className="text-xs text-blue-400 px-1">locked</span>
-                    : <button onClick={e => { e.stopPropagation(); deleteField(f.id) }} className="w-6 h-6 rounded hover:bg-red-50 flex items-center justify-center text-red-400 text-xs">✕</button>
-                  }
-                </div>
-                {/* Field preview */}
-                {f.type === 'heading' ? (
-                  <div className="text-sm font-semibold border-b-2 border-gray-200 pb-1">{f.label}</div>
-                ) : ['radio', 'checkbox'].includes(f.type) ? (
-                  <div className="flex flex-wrap gap-1.5 pointer-events-none">
-                    {(f.options ?? []).slice(0, 4).map(o => <span key={o} className="px-2 py-1 border border-gray-200 rounded text-xs text-gray-400">{o}</span>)}
-                  </div>
-                ) : f.type === 'file' ? (
-                  <div className="border-2 border-dashed border-gray-200 rounded p-3 text-xs text-gray-400 text-center pointer-events-none">
-                    📎 Upload {(f.validations as any)?.accept || ''} · max {(f.validations as any)?.maxSizeMB || 10}MB
-                  </div>
-                ) : (
-                  <div className="h-8 border border-gray-200 rounded bg-gray-50 flex items-center px-2 text-xs text-gray-300 pointer-events-none">
-                    {f.placeholder || f.label}
-                  </div>
-                )}
-                {/* Validation tags */}
-                {vTags(f).length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {vTags(f).map(t => <span key={t} className="text-xs bg-amber-50 text-amber-600 border border-amber-100 rounded px-1.5 py-0.5 font-mono">{t}</span>)}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Inspector */}
-      <aside className="w-72 bg-white border-l border-gray-200 overflow-y-auto shrink-0">
-          {!selectedField ? (
-            <div className="flex flex-col h-full text-gray-400">
-              <div className="flex flex-col items-center justify-center py-8 px-6 text-center border-b border-gray-100">
-                <div className="text-3xl mb-3 opacity-30">◎</div>
-                <div className="text-sm">Click a field to edit its properties</div>
-              </div>
-              <div className="p-4 flex-1 overflow-y-auto">
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Tip</div>
-                <div className="text-xs text-gray-400 leading-relaxed">
-                  Use the left panel to add fields, then publish to generate a public applicant link.
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="p-4">
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4 flex items-center justify-between">
-                Field properties
-                <span className="font-mono bg-gray-100 border rounded px-1.5 py-0.5 normal-case">{selectedField.type}</span>
-              </div>
-
-              {/* Basic */}
-              <div className="space-y-3 mb-5">
-                <div><label className="label">Label</label>
-                  <input className="input text-xs" value={selectedField.label} onChange={e => updateField(selectedField.id, 'label', e.target.value)} /></div>
-                <div><label className="label">Field key <span className="text-gray-400 font-normal">(API key)</span></label>
-                  <input className="input text-xs font-mono" value={selectedField.key} onChange={e => updateField(selectedField.id, 'key', e.target.value)} /></div>
-                {!['heading', 'file', 'radio', 'checkbox'].includes(selectedField.type) && (
-                  <div><label className="label">Placeholder</label>
-                    <input className="input text-xs" value={selectedField.placeholder ?? ''} onChange={e => updateField(selectedField.id, 'placeholder', e.target.value)} /></div>
-                )}
-                <div><label className="label">Helper text</label>
-                  <input className="input text-xs" value={selectedField.hint ?? ''} onChange={e => updateField(selectedField.id, 'hint', e.target.value)} placeholder="Shown below the field" /></div>
-                <div className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer" onClick={() => updateField(selectedField.id, 'required', !selectedField.required)}>
-                  <div><div className="text-xs font-medium">Required field</div><div className="text-xs text-gray-400">Must be filled to submit</div></div>
-                  <div className={`w-9 h-5 rounded-full relative transition-colors ${selectedField.required ? 'bg-gray-900' : 'bg-gray-200'}`}>
-                    <div className={`absolute w-3.5 h-3.5 bg-white rounded-full top-0.5 transition-all shadow ${selectedField.required ? 'left-4.5' : 'left-0.5'}`} style={{ left: selectedField.required ? '18px' : '2px' }} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Options */}
-              {['select', 'radio', 'checkbox'].includes(selectedField.type) && (
-                <div className="mb-5">
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-100 pt-4">Options</div>
-                  {(selectedField.options ?? []).map((opt, i) => (
-                    <div key={i} className="flex gap-1.5 mb-1.5">
-                      <input className="input text-xs flex-1" value={opt} onChange={e => updateOption(selectedField.id, i, e.target.value)} />
-                      <button onClick={() => removeOption(selectedField.id, i)} className="w-7 h-7 rounded hover:bg-red-50 flex items-center justify-center text-gray-300 hover:text-red-400 text-xs">✕</button>
-                    </div>
-                  ))}
-                  <button onClick={() => addOption(selectedField.id)} className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1">+ Add option</button>
-                </div>
-              )}
-
-              {/* Validations */}
-              {!['heading'].includes(selectedField.type) && (
-                <div>
-                  <div className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3 border-t border-gray-100 pt-4">Validation rules</div>
-                  {['text', 'textarea', 'email', 'url'].includes(selectedField.type) && (
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <div><label className="label">Min length</label>
-                        <input type="number" className="input text-xs" value={(selectedField.validations as any)?.minLength ?? ''} onChange={e => updateValidation(selectedField.id, 'minLength', e.target.value ? parseInt(e.target.value) : '')} placeholder="e.g. 10" /></div>
-                      <div><label className="label">Max length</label>
-                        <input type="number" className="input text-xs" value={(selectedField.validations as any)?.maxLength ?? ''} onChange={e => updateValidation(selectedField.id, 'maxLength', e.target.value ? parseInt(e.target.value) : '')} placeholder="e.g. 500" /></div>
-                    </div>
-                  )}
-                  {selectedField.type === 'number' && (
-                    <div className="grid grid-cols-2 gap-2 mb-2">
-                      <div><label className="label">Min value</label>
-                        <input type="number" className="input text-xs" value={(selectedField.validations as any)?.min ?? ''} onChange={e => updateValidation(selectedField.id, 'min', e.target.value !== '' ? parseFloat(e.target.value) : '')} placeholder="0" /></div>
-                      <div><label className="label">Max value</label>
-                        <input type="number" className="input text-xs" value={(selectedField.validations as any)?.max ?? ''} onChange={e => updateValidation(selectedField.id, 'max', e.target.value !== '' ? parseFloat(e.target.value) : '')} placeholder="100" /></div>
-                      <div className="col-span-2"><label className="label">Step</label>
-                        <input type="number" className="input text-xs" value={(selectedField.validations as any)?.step ?? ''} onChange={e => updateValidation(selectedField.id, 'step', e.target.value ? parseFloat(e.target.value) : '')} placeholder="e.g. 0.01" /></div>
-                    </div>
-                  )}
-                  {selectedField.type === 'file' && (
-                    <div className="space-y-2">
-                      <div><label className="label">Accepted types</label>
-                        <input className="input text-xs font-mono" value={(selectedField.validations as any)?.accept ?? ''} onChange={e => updateValidation(selectedField.id, 'accept', e.target.value)} placeholder=".pdf,.doc,.docx" /></div>
-                      <div><label className="label">Max size (MB)</label>
-                        <input type="number" className="input text-xs" value={(selectedField.validations as any)?.maxSizeMB ?? ''} onChange={e => updateValidation(selectedField.id, 'maxSizeMB', e.target.value ? parseInt(e.target.value) : '')} placeholder="10" /></div>
-                    </div>
-                  )}
-                  {['text', 'email'].includes(selectedField.type) && (
-                    <div className="mt-2"><label className="label">Regex pattern <span className="text-gray-400">(optional)</span></label>
-                      <input className="input text-xs font-mono" value={(selectedField.validations as any)?.pattern ?? ''} onChange={e => updateValidation(selectedField.id, 'pattern', e.target.value || undefined)} placeholder="e.g. ^[A-Z].*" /></div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex gap-2 mt-6 border-t border-gray-100 pt-4">
-                {!MANDATORY_KEYS.has(selectedField.key) && <button className="btn btn-outline btn-sm flex-1 text-xs" onClick={() => duplicateField(selectedField.id)}>Duplicate</button>}
-                {MANDATORY_KEYS.has(selectedField.key)
-                  ? <p className="text-xs text-blue-500 text-center w-full py-1">This field is required on all forms and cannot be removed.</p>
-                  : <button className="btn-danger flex-1 text-xs" onClick={() => deleteField(selectedField.id)}>Delete</button>
-                }
-              </div>
-            </div>
-          )}
-      </aside>
-    </div>
     </div>
   )
 }

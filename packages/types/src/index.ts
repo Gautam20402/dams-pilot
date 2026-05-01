@@ -34,9 +34,10 @@ export interface ApiError      { error: string; code: string; success: false }
 export const ROLE_PERMISSIONS: Record<UserRole,{
   canUpdateStatus: boolean; canSendOutreach: boolean
   canEditForms: boolean; canViewAllDepts: boolean; canManageTeams: boolean
+  canManageDepartments: boolean
 }> = {
-  SUPER_ADMIN: { canUpdateStatus:true,  canSendOutreach:true,  canEditForms:true,  canViewAllDepts:true,  canManageTeams:true  },
-  DEPT_ADMIN:  { canUpdateStatus:true,  canSendOutreach:true,  canEditForms:true,  canViewAllDepts:false, canManageTeams:true  },
-  BUILDER:     { canUpdateStatus:false, canSendOutreach:false, canEditForms:true,  canViewAllDepts:false, canManageTeams:false },
-  CALLER:      { canUpdateStatus:true,  canSendOutreach:true,  canEditForms:false, canViewAllDepts:false, canManageTeams:false },
+  SUPER_ADMIN: { canUpdateStatus:true,  canSendOutreach:true,  canEditForms:true,  canViewAllDepts:true,  canManageTeams:true,  canManageDepartments:true  },
+  DEPT_ADMIN:  { canUpdateStatus:true,  canSendOutreach:true,  canEditForms:true,  canViewAllDepts:false, canManageTeams:true,  canManageDepartments:false },
+  BUILDER:     { canUpdateStatus:false, canSendOutreach:false, canEditForms:true,  canViewAllDepts:false, canManageTeams:false, canManageDepartments:false },
+  CALLER:      { canUpdateStatus:true,  canSendOutreach:true,  canEditForms:false, canViewAllDepts:false, canManageTeams:false, canManageDepartments:false },
 }

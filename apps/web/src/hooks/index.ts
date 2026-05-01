@@ -125,6 +125,13 @@ export function useDepartments() {
     refetchOnReconnect: false,
   });
 }
+export function useCreateDepartment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.createDepartment,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["departments"] }),
+  });
+}
 
 // ── Outreach ───────────────────────────────────────────────────────────────────
 export function useSendEmail() {

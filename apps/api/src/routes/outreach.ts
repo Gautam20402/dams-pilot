@@ -14,10 +14,10 @@ export async function outreachRoutes(fastify: FastifyInstance) {
     if (!lead) return reply.status(404).send({ success:false, error:'Lead not found', code:'NOT_FOUND' })
 
     const result = await emailService.sendCustom(b.data.to, b.data.subject, b.data.body)
-    await prisma.outreachLog.create({ data:{ leadId:b.data.leadId, sentById:req.userId,
+    await prisma.outreachLog.create({ data:{ leadId:b.data.leadId,
       channel:'email', subject:b.data.subject, body:b.data.body, externalId:result.id } })
-    await prisma.leadEvent.create({ data:{ leadId:b.data.leadId, actorId:req.userId,
-      eventType:'outreach_sent', metadata:{ channel:'email', subject:b.data.subject } } })
+    await prisma.leadEvent.create({ data:{ leadId:b.data.leadId,
+      eventType:'outreach_sent', metadata:{ channel:'email', subject:b.data.subject, sentBy:req.adminEmail } } })
     if (lead.status==='new'||lead.status==='partial')
       await prisma.lead.update({ where:{ id:b.data.leadId }, data:{ status:'contacted' } })
 
@@ -31,10 +31,10 @@ export async function outreachRoutes(fastify: FastifyInstance) {
     if (!lead) return reply.status(404).send({ success:false, error:'Lead not found', code:'NOT_FOUND' })
 
     const result = await smsService.send(b.data.to, b.data.body)
-    await prisma.outreachLog.create({ data:{ leadId:b.data.leadId, sentById:req.userId,
+    await prisma.outreachLog.create({ data:{ leadId:b.data.leadId,
       channel:'sms', body:b.data.body, externalId:result.sid } })
-    await prisma.leadEvent.create({ data:{ leadId:b.data.leadId, actorId:req.userId,
-      eventType:'outreach_sent', metadata:{ channel:'sms' } } })
+    await prisma.leadEvent.create({ data:{ leadId:b.data.leadId,
+      eventType:'outreach_sent', metadata:{ channel:'sms', sentBy:req.adminEmail } } })
     if (lead.status==='new'||lead.status==='partial')
       await prisma.lead.update({ where:{ id:b.data.leadId }, data:{ status:'contacted' } })
 
@@ -44,17 +44,16 @@ export async function outreachRoutes(fastify: FastifyInstance) {
   fastify.post('/call', { preHandler:[requirePermission('canSendOutreach')] }, async (req, reply) => {
     const b = LogCallSchema.safeParse(req.body)
     if (!b.success) return reply.status(400).send({ success:false, error:b.error.flatten(), code:'VALIDATION_ERROR' })
-    await prisma.outreachLog.create({ data:{ leadId:b.data.leadId, sentById:req.userId,
+    await prisma.outreachLog.create({ data:{ leadId:b.data.leadId,
       channel:'call', body:b.data.note, outcome:b.data.outcome } })
-    await prisma.leadEvent.create({ data:{ leadId:b.data.leadId, actorId:req.userId,
-      eventType:'call_logged', metadata:{ duration:b.data.duration, outcome:b.data.outcome } } })
+    await prisma.leadEvent.create({ data:{ leadId:b.data.leadId,
+      eventType:'call_logged', metadata:{ duration:b.data.duration, outcome:b.data.outcome, loggedBy:req.adminEmail } } })
     return reply.status(201).send({ success:true })
   })
 
   fastify.get('/:leadId', async (req, reply) => {
     const { leadId } = req.params as { leadId:string }
-    const logs = await prisma.outreachLog.findMany({ where:{ leadId }, orderBy:{ sentAt:'desc' },
-      include:{ sentBy:{ select:{ firstName:true, lastName:true } } } })
+    const logs = await prisma.outreachLog.findMany({ where:{ leadId }, orderBy:{ sentAt:'desc' } })
     return reply.send({ success:true, data:logs })
   })
 }
