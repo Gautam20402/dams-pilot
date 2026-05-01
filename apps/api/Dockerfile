@@ -14,7 +14,10 @@ RUN npm install -g pnpm
 COPY --from=deps /app/node_modules                  ./node_modules
 COPY --from=deps /app/apps/api/node_modules         ./apps/api/node_modules
 COPY . .
-RUN pnpm --filter @dams/db generate
+# Build workspace packages first — dist/ is gitignored so must be compiled here
+RUN pnpm --filter @dams/types build
+RUN pnpm --filter @dams/validators build
+RUN pnpm --filter @dams/db build
 RUN pnpm --filter @dams/api build
 
 FROM node:20-alpine AS runner
