@@ -1,4 +1,6 @@
 {
-  "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "cd ../.. && pnpm --filter @dams/db generate && pnpm --filter @dams/types build && pnpm --filter @dams/validators build && pnpm --filter @dams/db build && pnpm --filter @dams/web build"
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm --filter @dams/types build && pnpm --filter @dams/validators build && pnpm --filter @dams/db build && pnpm --filter @dams/web build"
 }
