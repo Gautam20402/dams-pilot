@@ -343,21 +343,30 @@ export default function DashboardPage() {
             onChange={e => setF('search', e.target.value)}
           />
         </div>
-        <select className="input w-36 text-xs" onChange={e => setF('status', e.target.value)}>
-          <option value="">All statuses</option>
-          {ALL_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-        </select>
-        <select className="input w-36 text-xs" onChange={e => setF('source', e.target.value)}>
-          <option value="">All sources</option>
-          <option value="ga_poll">GA4 poll</option>
-          <option value="partial_save">Partial save</option>
-          <option value="direct">Direct</option>
-        </select>
-        <select className="input w-36 text-xs" onChange={e => setF('sortBy', e.target.value)}>
-          <option value="createdAt">Newest first</option>
-          <option value="completionPct">Completion</option>
-          <option value="firstName">Name A–Z</option>
-        </select>
+        <div className="relative">
+          <select className="input w-36 text-xs appearance-none pr-8" onChange={e => setF('status', e.target.value)}>
+            <option value="">All statuses</option>
+            {ALL_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+          </select>
+          <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4"/></svg>
+        </div>
+        <div className="relative">
+          <select className="input w-36 text-xs appearance-none pr-8" onChange={e => setF('source', e.target.value)}>
+            <option value="">All sources</option>
+            <option value="ga_poll">GA4 poll</option>
+            <option value="partial_save">Partial save</option>
+            <option value="direct">Direct</option>
+          </select>
+          <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4"/></svg>
+        </div>
+        <div className="relative">
+          <select className="input w-36 text-xs appearance-none pr-8" onChange={e => setF('sortBy', e.target.value)}>
+            <option value="createdAt">Newest first</option>
+            <option value="completionPct">Completion</option>
+            <option value="firstName">Name A–Z</option>
+          </select>
+          <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4"/></svg>
+        </div>
         {(isFetching) && (
           <span className="flex items-center gap-1.5 text-xs text-slate-400">
             <span className="w-3 h-3 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin" />
@@ -410,7 +419,7 @@ export default function DashboardPage() {
           {/* Desktop table */}
           <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             {/* Table header */}
-            <div className="grid grid-cols-[160px_1fr_120px_100px_130px] px-5 py-3 bg-slate-50 border-b border-slate-100">
+            <div className="grid grid-cols-[30%_40%_10%_10%_10%] px-5 py-3 bg-slate-50 border-b border-slate-100">
               {['Applicant', 'Program', 'Status', 'Completion', 'Created'].map(h => (
                 <div key={h} className="table-head">{h}</div>
               ))}
@@ -430,7 +439,7 @@ export default function DashboardPage() {
               <button
                 key={lead.id} type="button"
                 onClick={() => setSelectedId(lead.id)}
-                className={`w-full text-left grid grid-cols-[160px_1fr_120px_100px_130px] px-5 py-3.5 border-b border-slate-100 items-center last:border-0 transition
+                className={`w-full text-left grid grid-cols-[30%_40%_10%_10%_10%] px-5 py-3.5 border-b border-slate-100 items-center last:border-0 transition
                   ${selectedId === lead.id ? 'bg-blue-50 table-row-active' : 'table-row'}`}
               >
                 <div className="min-w-0">

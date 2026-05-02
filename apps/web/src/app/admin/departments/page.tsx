@@ -113,7 +113,7 @@ function DepartmentsContent() {
 
       {/* Table */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="grid grid-cols-[180px_160px_1fr_200px_60px] px-5 py-3 bg-slate-50 border-b border-slate-100">
+        <div className="grid grid-cols-[25%_25%_20%_20%_10%] px-5 py-3 bg-slate-50 border-b border-slate-100">
           {['University / Campus', 'Department', 'Admin Email', 'Slug', 'Leads'].map(h => (
             <div key={h} className="table-head">{h}</div>
           ))}
@@ -134,29 +134,29 @@ function DepartmentsContent() {
           departments.map((dept: any) => (
             <div
               key={dept.id}
-              className="grid grid-cols-[180px_160px_1fr_200px_60px] px-5 py-4 border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition-colors"
+              className="grid grid-cols-[25%_25%_20%_20%_10%] px-5 py-4 border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition-colors"
             >
               {/* University */}
-              <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-900 truncate">
+              <div className="min-w-0 pr-3">
+                <div className="text-sm font-medium text-slate-900 break-words">
                   {dept.universityName || '—'}
                 </div>
-                <div className="text-[11px] text-slate-400 font-mono truncate mt-0.5">{dept.id}</div>
+                <div className="text-[11px] text-slate-400 font-mono break-all mt-0.5">{dept.id}</div>
               </div>
 
               {/* Department */}
-              <div className="min-w-0">
-                <div className="text-sm text-slate-800 truncate">{dept.name}</div>
+              <div className="min-w-0 pr-3">
+                <div className="text-sm text-slate-800 break-words">{dept.name}</div>
                 {dept.description && (
-                  <div className="text-[11px] text-slate-400 truncate mt-0.5">{dept.description}</div>
+                  <div className="text-[11px] text-slate-400 break-words mt-0.5">{dept.description}</div>
                 )}
               </div>
 
               {/* Admin email */}
-              <div className="min-w-0">
+              <div className="min-w-0 pr-3">
                 {dept.admins && dept.admins.length > 0 ? (
                   dept.admins.map((a: any) => (
-                    <div key={a.id} className="text-xs font-mono text-slate-600 truncate">{a.email}</div>
+                    <div key={a.id} className="text-xs font-mono text-slate-600 break-all">{a.email}</div>
                   ))
                 ) : (
                   <span className="text-xs text-slate-300 italic">No admin</span>
@@ -164,8 +164,8 @@ function DepartmentsContent() {
               </div>
 
               {/* Slug */}
-              <div className="min-w-0">
-                <span className="block truncate text-[11px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">
+              <div className="min-w-0 pr-3">
+                <span className="inline text-[11px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md break-all">
                   {dept.slug}
                 </span>
               </div>
