@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import nodemailer from 'nodemailer'
 import { prisma } from '@dams/db'
 import { SendEmailSchema, SendSMSSchema, LogCallSchema } from '@dams/validators'
 import { requirePermission } from '../middleware/auth.js'
@@ -6,6 +7,42 @@ import { emailService } from '../services/email.js'
 import { smsService }   from '../services/sms.js'
 
 export async function outreachRoutes(fastify: FastifyInstance) {
+
+  // ── SMTP diagnostic — GET /api/outreach/email-test ───────────────────────
+  // No auth required so you can hit it straight from curl to verify config
+  fastify.get('/email-test', async (_req, reply) => {
+    const user = process.env.SMTP_USER ?? ''
+    const pass = process.env.SMTP_PASS ?? ''
+    const host = process.env.SMTP_HOST ?? 'smtp.gmail.com'
+    const port = Number(process.env.SMTP_PORT ?? 587)
+    const secure = process.env.SMTP_SECURE === 'true'
+
+    const config = {
+      SMTP_HOST:   host,
+      SMTP_PORT:   port,
+      SMTP_SECURE: secure,
+      SMTP_USER:   user ? `${user.slice(0, 4)}****` : '(not set)',
+      SMTP_PASS:   pass ? `****` : '(not set)',
+    }
+
+    if (!user || !pass) {
+      return reply.status(500).send({ ok: false, config, error: 'SMTP_USER or SMTP_PASS not set' })
+    }
+
+    const transporter = nodemailer.createTransport({
+      host, port, secure,
+      auth: { user, pass },
+      connectionTimeout: 10_000,
+      greetingTimeout:   10_000,
+    })
+
+    try {
+      await transporter.verify()
+      return reply.send({ ok: true, config, message: 'SMTP connection verified ✓' })
+    } catch (err: any) {
+      return reply.status(500).send({ ok: false, config, error: err?.message ?? String(err) })
+    }
+  })
 
   fastify.post('/email', { preHandler:[requirePermission('canSendOutreach')] }, async (req, reply) => {
     const b = SendEmailSchema.safeParse(req.body)
