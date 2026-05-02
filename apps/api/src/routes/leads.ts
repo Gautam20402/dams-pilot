@@ -65,17 +65,24 @@ export async function leadsRoutes(fastify: FastifyInstance) {
     // This does not block form submission success; failures are returned as `salesforceBackend.error`.
     const externalLeadId = `web_${updated.id}`
     let salesforceBackend: any = null
+
+    // Fetch department name so it can be sent in mandatoryFields.department
+    const department = updated.departmentId
+      ? await prisma.department.findUnique({ where: { id: updated.departmentId }, select: { name: true } })
+      : null
+
     try {
       const payload = salesforceBackendService.buildPayload({
         externalLeadId,
-        dataJson: updated.dataJson,
-        completionPct: 100,
+        dataJson:       updated.dataJson,
+        departmentName: department?.name ?? null,
+        completionPct:  100,
         utm: {
-          source: updated.utmSource,
-          medium: updated.utmMedium,
+          source:   updated.utmSource,
+          medium:   updated.utmMedium,
           campaign: updated.utmCampaign,
-          content: updated.utmContent,
-          term: updated.utmTerm,
+          content:  updated.utmContent,
+          term:     updated.utmTerm,
         },
       })
       const body = await salesforceBackendService.submitForm(payload)
@@ -191,6 +198,31 @@ export async function leadsRoutes(fastify: FastifyInstance) {
     if (req.userRole!=='SUPER_ADMIN' && lead.departmentId!==req.departmentId)
       return reply.status(403).send({ success:false, error:'Forbidden', code:'DEPT_MISMATCH' })
     return reply.send({ success:true, data:lead })
+  })
+
+  // GET /api/leads/:id/sf-payload  — preview the Salesforce payload for a lead (no auth for debug)
+  fastify.get('/:id/sf-payload', async (req, reply) => {
+    const { id } = req.params as { id: string }
+    const lead = await prisma.lead.findUnique({
+      where: { id },
+      include: { department: { select: { name: true } } },
+    })
+    if (!lead) return reply.status(404).send({ success: false, error: 'Lead not found' })
+
+    const payload = salesforceBackendService.buildPayload({
+      externalLeadId: `web_${lead.id}`,
+      dataJson:       lead.dataJson,
+      departmentName: (lead as any).department?.name ?? null,
+      completionPct:  lead.completionPct,
+      utm: {
+        source:   lead.utmSource,
+        medium:   lead.utmMedium,
+        campaign: lead.utmCampaign,
+        content:  lead.utmContent,
+        term:     lead.utmTerm,
+      },
+    })
+    return reply.send({ success: true, payload })
   })
 
   // PATCH /api/leads/:id/status

@@ -31,14 +31,15 @@ function asStringRecord(dataJson: unknown): Record<string, string> {
 }
 
 function pickDynamicFields(dj: Record<string, string>) {
+  // Mandatory fields are sent separately — exclude them from dynamicFields
   const excluded = new Set(['first_name', 'last_name', 'email', 'phone', 'company', 'status'])
   const dynamic: Record<string, unknown> = {}
 
   for (const [k, v] of Object.entries(dj)) {
     if (!v) continue
     if (excluded.has(k)) continue
-    // Only include valid Salesforce custom field names (must end with __c)
-    if (!k.endsWith('__c')) continue
+    // Include all form fields (no __c filter — custom field naming is the
+    // responsibility of the Salesforce backend, not this payload builder)
     dynamic[k] = v
   }
 
@@ -62,13 +63,13 @@ export const salesforceBackendService = {
     const dj = asStringRecord(input.dataJson)
 
     const mandatoryFields = {
-      firstName: dj.first_name ?? '',
-      lastName: dj.last_name ?? 'Unknown',
-      company: 'ABM Technologies',
-      department: input.departmentName ?? undefined,
-      email: dj.email,
-      phone: dj.phone,
-      status: dj.status ?? 'Open - Not Contacted',
+      firstName:  dj.first_name ?? '',
+      lastName:   dj.last_name  ?? 'Unknown',
+      company:    'ABM Tech',
+      department: input.departmentName ?? dj.department ?? '',
+      email:      dj.email  ?? '',
+      phone:      dj.phone  ?? '',
+      status:     'Open - Not Contacted',
     }
 
     const dynamicFields: Record<string, unknown> = {
