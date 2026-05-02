@@ -49,7 +49,10 @@ export function useUpdateLeadStatus() {
       status: string;
       note?: string;
     }) => api.updateStatus(id, { status, note }),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      // Invalidate the individual lead so the modal reflects the new status immediately
+      qc.invalidateQueries({ queryKey: ["lead", variables.id] });
+      // Also update the list + stats
       qc.invalidateQueries({ queryKey: ["leads"] });
       qc.invalidateQueries({ queryKey: ["lead-stats"] });
     },

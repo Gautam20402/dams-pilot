@@ -393,10 +393,30 @@ export default function DashboardPage() {
           <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4"/></svg>
         </div>
         <div className="relative">
-          <select className="input w-36 text-xs appearance-none pr-8" onChange={e => setF('sortBy', e.target.value)}>
+          <select
+            className="input w-36 text-xs appearance-none pr-8"
+            onChange={e => {
+              const v = e.target.value
+              if (v === 'firstName_asc') {
+                setF('sortBy', 'firstName')
+                setFilters(p => ({ ...p, sortDir: 'asc' }))
+              } else if (v === 'completionPct') {
+                setF('sortBy', 'completionPct')
+                setFilters(p => ({ ...p, sortDir: 'desc' }))
+              } else {
+                // createdAt desc (default)
+                setFilters(p => {
+                  const n = { ...p }
+                  delete n.sortBy
+                  delete n.sortDir
+                  return n
+                })
+              }
+            }}
+          >
             <option value="createdAt">Newest first</option>
-            <option value="completionPct">Completion</option>
-            <option value="firstName">Name A–Z</option>
+            <option value="completionPct">Completion ↓</option>
+            <option value="firstName_asc">Name A–Z</option>
           </select>
           <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4"/></svg>
         </div>
