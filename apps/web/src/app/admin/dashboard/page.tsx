@@ -9,8 +9,14 @@ import { getAdminPayload } from '@/lib/auth'
 
 const ALL_STATUSES: LeadStatus[] = ['new', 'partial', 'contacted', 'in_progress', 'submitted', 'dropped', 'converted']
 
+/** Capitalise first letter for display; value stays lowercase for mapping */
+function fmtStatus(s: string) {
+  const label = s.replace('_', ' ')
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
 function StatusBadge({ status }: Readonly<{ status: string }>) {
-  return <span className={`badge s-${status}`}>{status.replace('_', ' ')}</span>
+  return <span className={`badge s-${status}`}>{fmtStatus(status)}</span>
 }
 
 function PctBar({ pct }: Readonly<{ pct: number }>) {
@@ -86,11 +92,11 @@ function SourceBadge({ source }: Readonly<{ source: string }>) {
   return <span className={`src-${source}`}>{label}</span>
 }
 
-// ── Lead Details Panel ──────────────────────────────────────────────────────
-function LeadDetails({
-  lead, isLoading, onBack, perms, emailPending, onSendEmail, onUpdateStatus,
+// ── Lead Details Modal ──────────────────────────────────────────────────────
+function LeadDetailsModal({
+  lead, isLoading, onClose, perms, emailPending, onSendEmail, onUpdateStatus,
 }: Readonly<{
-  lead: Lead | null; isLoading: boolean; onBack: () => void
+  lead: Lead | null; isLoading: boolean; onClose: () => void
   perms: { canUpdateStatus: boolean; canSendOutreach: boolean }
   emailPending: boolean
   onSendEmail: (args: { to: string; subject: string; body: string; leadId: string }) => void
@@ -101,144 +107,174 @@ function LeadDetails({
     return Object.entries(obj).filter(([, v]) => v !== null && v !== undefined && v !== '').slice(0, 200)
   }, [lead])
 
+  // Close on Escape key
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm min-h-[240px] overflow-hidden">
-      {/* Header */}
-      <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-3">
-        <button type="button" className="btn btn-outline btn-sm md:hidden" onClick={onBack}>← Back</button>
-        <div className="min-w-0 flex-1">
-          {isLoading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <span className="w-3.5 h-3.5 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin" />
-              Loading…
-            </div>
-          ) : (
-            <>
-              <div className="text-sm font-semibold text-slate-900 truncate">
-                {`${lead?.firstName ?? ''} ${lead?.lastName ?? ''}`.trim() || 'Lead details'}
+    /* Backdrop */
+    <div
+      className="fixed inset-0 z-40 bg-black/50 flex items-start justify-center overflow-y-auto p-4 py-10"
+      onClick={onClose}
+    >
+      {/* Panel — stop clicks from closing */}
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Modal header */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-sm text-slate-400">
+                <span className="w-3.5 h-3.5 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin" />
+                Loading…
               </div>
-              <div className="text-[11px] text-slate-400 font-mono truncate">id: {lead?.id ?? '—'}</div>
-            </>
+            ) : (
+              <>
+                <div className="text-base font-semibold text-slate-900 truncate">
+                  {`${lead?.firstName ?? ''} ${lead?.lastName ?? ''}`.trim() || 'Lead details'}
+                </div>
+                <div className="text-[11px] text-slate-400 font-mono truncate mt-0.5">id: {lead?.id ?? '—'}</div>
+              </>
+            )}
+          </div>
+          {!isLoading && lead && (
+            <div className="flex items-center gap-2 shrink-0">
+              <StatusBadge status={lead.status} />
+              <PctBar pct={lead.completionPct} />
+            </div>
           )}
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition ml-2"
+            aria-label="Close"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <path d="M2 2l12 12M14 2L2 14"/>
+            </svg>
+          </button>
         </div>
-        {!isLoading && lead && (
-          <div className="flex items-center gap-2">
-            <StatusBadge status={lead.status} />
-            <PctBar pct={lead.completionPct} />
-          </div>
-        )}
-      </div>
 
-      {isLoading ? (
-        <div className="p-8 flex items-center gap-2 text-sm text-slate-400">
-          <span className="w-4 h-4 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin shrink-0" />
-          Loading lead…
-        </div>
-      ) : !lead ? (
-        <div className="p-8 text-center text-sm text-slate-400">
-          <div className="text-3xl mb-2 opacity-30">◎</div>
-          Select a lead to view details
-        </div>
-      ) : (
-        <div className="p-5 space-y-5">
-          {/* Top row: contact + meta + actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="card-inset space-y-1">
-              <div className="section-label mb-2">Contact</div>
-              <div className="text-sm font-semibold text-slate-900">
-                {`${lead.firstName ?? ''} ${lead.lastName ?? ''}`.trim() || '—'}
+        {/* Modal body */}
+        {isLoading ? (
+          <div className="p-8 flex items-center gap-2 text-sm text-slate-400">
+            <span className="w-4 h-4 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin shrink-0" />
+            Loading lead…
+          </div>
+        ) : !lead ? (
+          <div className="p-8 text-center text-sm text-slate-400">
+            <div className="text-3xl mb-2 opacity-30">◎</div>
+            No lead data
+          </div>
+        ) : (
+          <div className="p-6 space-y-5">
+            {/* Top row: contact + source + actions */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="card-inset space-y-1">
+                <div className="section-label mb-2">Contact</div>
+                <div className="text-sm font-semibold text-slate-900">
+                  {`${lead.firstName ?? ''} ${lead.lastName ?? ''}`.trim() || '—'}
+                </div>
+                <div className="text-xs text-slate-500 font-mono truncate">{lead.email ?? '—'}</div>
+                <div className="text-xs text-slate-500 font-mono">{lead.phone ?? '—'}</div>
               </div>
-              <div className="text-xs text-slate-500 font-mono truncate">{lead.email ?? '—'}</div>
-              <div className="text-xs text-slate-500 font-mono">{lead.phone ?? '—'}</div>
-            </div>
-            <div className="card-inset space-y-1">
-              <div className="section-label mb-2">Source</div>
-              <div><SourceBadge source={lead.source} /></div>
-              <div className="text-xs text-slate-500 mt-1">Created: <span className="font-mono">{fmtDate(lead.createdAt)}</span></div>
-              <div className="text-xs text-slate-500">Updated: <span className="font-mono">{fmtDate(lead.updatedAt)}</span></div>
-            </div>
-            <div className="card-inset flex flex-col gap-2">
-              <div className="section-label mb-1">Actions</div>
-              {perms.canSendOutreach && (
-                <button
-                  className="btn-success w-full justify-center"
-                  disabled={emailPending || !lead.email}
-                  onClick={() => onSendEmail({
-                    to: lead.email!,
-                    subject: 'Your application — next steps',
-                    body: `Hi ${lead.firstName ?? ''},\n\nYour application is waiting.\n\n— Admissions`,
-                    leadId: lead.id,
-                  })}
-                >
-                  {emailPending ? 'Sending…' : '✉ Send email'}
-                </button>
-              )}
-              {perms.canUpdateStatus && (
-                <div className="relative">
-                  <select
-                    className="input text-xs appearance-none pr-8 w-full"
-                    value={lead.status}
-                    onChange={e => onUpdateStatus({ id: lead.id, status: e.target.value })}
+              <div className="card-inset space-y-1">
+                <div className="section-label mb-2">Source</div>
+                <div><SourceBadge source={lead.source} /></div>
+                <div className="text-xs text-slate-500 mt-1">Created: <span className="font-mono">{fmtDate(lead.createdAt)}</span></div>
+                <div className="text-xs text-slate-500">Updated: <span className="font-mono">{fmtDate(lead.updatedAt)}</span></div>
+              </div>
+              <div className="card-inset flex flex-col gap-2">
+                <div className="section-label mb-1">Actions</div>
+                {perms.canSendOutreach && (
+                  <button
+                    className="btn-success w-full justify-center"
+                    disabled={emailPending || !lead.email}
+                    onClick={() => onSendEmail({
+                      to: lead.email!,
+                      subject: 'Your application — next steps',
+                      body: `Hi ${lead.firstName ?? ''},\n\nYour application is waiting.\n\n— Admissions`,
+                      leadId: lead.id,
+                    })}
                   >
-                    {ALL_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                  </select>
-                  <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 6l4 4 4-4"/>
-                  </svg>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* At a glance + Campaign */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="card-inset">
-              <div className="section-label mb-2">Progress</div>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">Completion</span>
-                  <span className="font-mono font-medium text-slate-800">{lead.completionPct}%</span>
-                </div>
-                <PctBar pct={lead.completionPct} />
-                <div className="text-xs text-slate-500">Fields filled: <span className="font-mono">{lead.fieldsFilled}</span></div>
-                {lead.lastActivePage !== null && lead.lastActivePage !== undefined && (
-                  <div className="text-xs text-slate-500">Last page: <span className="font-mono">{lead.lastActivePage}</span></div>
+                    {emailPending ? 'Sending…' : '✉ Send email'}
+                  </button>
+                )}
+                {perms.canUpdateStatus && (
+                  <div className="relative">
+                    <select
+                      className="input text-xs appearance-none pr-8 w-full"
+                      value={lead.status}
+                      onChange={e => onUpdateStatus({ id: lead.id, status: e.target.value })}
+                    >
+                      {ALL_STATUSES.map(s => (
+                        <option key={s} value={s}>{fmtStatus(s)}</option>
+                      ))}
+                    </select>
+                    <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 6l4 4 4-4"/>
+                    </svg>
+                  </div>
                 )}
               </div>
             </div>
-            <div className="card-inset">
-              <div className="section-label mb-2">Campaign</div>
-              <div className="space-y-1">
-                {[['Source', lead.utmSource], ['Medium', lead.utmMedium], ['Campaign', lead.utmCampaign]].map(([k, v]) => (
-                  <div key={k} className="text-xs text-slate-500 flex gap-1.5">
-                    <span className="w-14 text-slate-400 shrink-0">{k}</span>
-                    <span className="font-mono text-slate-700 truncate"><EmptyValue v={v} /></span>
+
+            {/* Progress + Campaign */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="card-inset">
+                <div className="section-label mb-2">Progress</div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Completion</span>
+                    <span className="font-mono font-medium text-slate-800">{lead.completionPct}%</span>
                   </div>
-                ))}
+                  <PctBar pct={lead.completionPct} />
+                  <div className="text-xs text-slate-500">Fields filled: <span className="font-mono">{lead.fieldsFilled}</span></div>
+                  {lead.lastActivePage !== null && lead.lastActivePage !== undefined && (
+                    <div className="text-xs text-slate-500">Last page: <span className="font-mono">{lead.lastActivePage}</span></div>
+                  )}
+                </div>
+              </div>
+              <div className="card-inset">
+                <div className="section-label mb-2">Campaign</div>
+                <div className="space-y-1">
+                  {[['Source', lead.utmSource], ['Medium', lead.utmMedium], ['Campaign', lead.utmCampaign]].map(([k, v]) => (
+                    <div key={k} className="text-xs text-slate-500 flex gap-1.5">
+                      <span className="w-14 text-slate-400 shrink-0">{k}</span>
+                      <span className="font-mono text-slate-700 truncate"><EmptyValue v={v} /></span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Form data */}
-          <div>
-            <div className="section-label mb-3">Form data</div>
-            {dataEntries.length === 0 ? (
-              <div className="text-xs text-slate-400 text-center py-4">No captured fields yet.</div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {dataEntries.map(([k, v]) => (
-                  <div key={k} className="border border-slate-200 rounded-lg p-2.5 bg-white">
-                    <div className="text-[11px] text-slate-400 font-mono truncate">{k}</div>
-                    <div className="text-xs text-slate-800 break-words mt-0.5">
-                      <LongValue v={v} />
+            {/* Form data */}
+            <div>
+              <div className="section-label mb-3">Form data</div>
+              {dataEntries.length === 0 ? (
+                <div className="text-xs text-slate-400 text-center py-4">No captured fields yet.</div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {dataEntries.map(([k, v]) => (
+                    <div key={k} className="border border-slate-200 rounded-lg p-2.5 bg-white">
+                      <div className="text-[11px] text-slate-400 font-mono truncate">{k}</div>
+                      <div className="text-xs text-slate-800 break-words mt-0.5">
+                        <LongValue v={v} />
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
@@ -271,7 +307,6 @@ export default function DashboardPage() {
 
   function setF(k: string, v: string) {
     setFilters(p => v ? { ...p, [k]: v } : Object.fromEntries(Object.entries(p).filter(([key]) => key !== k)))
-    setSelectedId(null)
   }
 
   function exportCSV() {
@@ -284,14 +319,12 @@ export default function DashboardPage() {
     a.click()
   }
 
-  const showDetails = Boolean(selectedId)
-
   const kpis = [
-    { label: 'Total Leads',    val: stats?.total ?? 0,                        color: 'text-slate-900',   bg: 'bg-slate-50',     icon: '👥' },
-    { label: 'Capture Rate',   val: `${stats?.captureRate ?? 0}%`,             color: 'text-emerald-700', bg: 'bg-emerald-50',   icon: '📊' },
-    { label: 'Outreach Sent',  val: stats?.outreachSent ?? 0,                  color: 'text-blue-700',    bg: 'bg-blue-50',      icon: '✉️' },
-    { label: 'Avg Completion', val: `${stats?.avgCompletion ?? 0}%`,           color: 'text-violet-700',  bg: 'bg-violet-50',    icon: '📈' },
-    { label: 'Submitted',      val: stats?.byStatus?.submitted ?? 0,           color: 'text-emerald-700', bg: 'bg-emerald-50',   icon: '✅' },
+    { label: 'Total Leads',    val: stats?.total ?? 0,                        color: 'text-slate-900'   },
+    { label: 'Capture Rate',   val: `${stats?.captureRate ?? 0}%`,             color: 'text-emerald-700' },
+    { label: 'Outreach Sent',  val: stats?.outreachSent ?? 0,                  color: 'text-blue-700'    },
+    { label: 'Avg Completion', val: `${stats?.avgCompletion ?? 0}%`,           color: 'text-violet-700'  },
+    { label: 'Submitted',      val: stats?.byStatus?.submitted ?? 0,           color: 'text-emerald-700' },
   ]
 
   return (
@@ -346,7 +379,7 @@ export default function DashboardPage() {
         <div className="relative">
           <select className="input w-36 text-xs appearance-none pr-8" onChange={e => setF('status', e.target.value)}>
             <option value="">All statuses</option>
-            {ALL_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+            {ALL_STATUSES.map(s => <option key={s} value={s}>{fmtStatus(s)}</option>)}
           </select>
           <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4"/></svg>
         </div>
@@ -367,7 +400,7 @@ export default function DashboardPage() {
           </select>
           <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4"/></svg>
         </div>
-        {(isFetching) && (
+        {isFetching && (
           <span className="flex items-center gap-1.5 text-xs text-slate-400">
             <span className="w-3 h-3 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin" />
             Refreshing…
@@ -376,104 +409,79 @@ export default function DashboardPage() {
         <span className="ml-auto text-xs text-slate-400 font-mono">{pagination?.total ?? 0} leads</span>
       </div>
 
-      {/* Main content: list + detail */}
-      <div className="flex gap-4 items-start">
-        {/* Leads list */}
-        <div className={[showDetails ? 'hidden md:block md:w-[58%] lg:w-[62%]' : 'w-full'].join(' ')}>
-
-          {/* Mobile cards */}
-          <div className="md:hidden space-y-2">
-            {isLoading ? (
-              <div className="card p-10 text-center text-sm text-slate-400">
-                <span className="w-5 h-5 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin inline-block mb-2" />
-                <div>Loading leads…</div>
-              </div>
-            ) : leads.length === 0 ? (
-              <div className="card p-10 text-center text-slate-400">
-                <div className="text-3xl mb-2">📭</div>
-                <div className="text-sm">No leads match your filters</div>
-              </div>
-            ) : leads.map(lead => (
-              <button
-                key={lead.id} type="button"
-                onClick={() => setSelectedId(lead.id)}
-                className={`w-full text-left bg-white border rounded-xl shadow-sm p-3.5 transition ${selectedId === lead.id ? 'border-blue-400 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="text-sm font-semibold text-slate-900 truncate">
-                        {`${lead.firstName ?? ''} ${lead.lastName ?? ''}`.trim() || 'Unnamed'}
-                      </div>
-                      <StatusBadge status={lead.status} />
-                    </div>
-                    <div className="text-xs text-slate-400 font-mono truncate">{lead.email ?? '—'}</div>
-                    <div className="text-xs text-slate-400 mt-1">{fmtDate(lead.createdAt)}</div>
+      {/* Leads table — always full width */}
+      {/* Mobile cards */}
+      <div className="md:hidden space-y-2">
+        {isLoading ? (
+          <div className="card p-10 text-center text-sm text-slate-400">
+            <span className="w-5 h-5 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin inline-block mb-2" />
+            <div>Loading leads…</div>
+          </div>
+        ) : leads.length === 0 ? (
+          <div className="card p-10 text-center text-slate-400">
+            <div className="text-3xl mb-2">📭</div>
+            <div className="text-sm">No leads match your filters</div>
+          </div>
+        ) : leads.map(lead => (
+          <button
+            key={lead.id} type="button"
+            onClick={() => setSelectedId(lead.id)}
+            className="w-full text-left bg-white border border-slate-200 rounded-xl shadow-sm p-3.5 transition hover:border-slate-300"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="text-sm font-semibold text-slate-900 truncate">
+                    {`${lead.firstName ?? ''} ${lead.lastName ?? ''}`.trim() || 'Unnamed'}
                   </div>
-                  <PctBar pct={lead.completionPct} />
+                  <StatusBadge status={lead.status} />
                 </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Desktop table */}
-          <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            {/* Table header */}
-            <div className="grid grid-cols-[30%_40%_10%_10%_10%] px-5 py-3 bg-slate-50 border-b border-slate-100">
-              {['Applicant', 'Program', 'Status', 'Completion', 'Created'].map(h => (
-                <div key={h} className="table-head">{h}</div>
-              ))}
+                <div className="text-xs text-slate-400 font-mono truncate">{lead.email ?? '—'}</div>
+                <div className="text-xs text-slate-400 mt-1">{fmtDate(lead.createdAt)}</div>
+              </div>
+              <PctBar pct={lead.completionPct} />
             </div>
+          </button>
+        ))}
+      </div>
 
-            {isLoading ? (
-              <div className="py-16 text-center">
-                <span className="w-6 h-6 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin inline-block mb-3" />
-                <div className="text-sm text-slate-400">Loading leads…</div>
-              </div>
-            ) : leads.length === 0 ? (
-              <div className="py-16 text-center text-slate-400">
-                <div className="text-3xl mb-2">📭</div>
-                <div className="text-sm">No leads match your filters</div>
-              </div>
-            ) : leads.map(lead => (
-              <button
-                key={lead.id} type="button"
-                onClick={() => setSelectedId(lead.id)}
-                className={`w-full text-left grid grid-cols-[30%_40%_10%_10%_10%] px-5 py-3.5 border-b border-slate-100 items-center last:border-0 transition
-                  ${selectedId === lead.id ? 'bg-blue-50 table-row-active' : 'table-row'}`}
-              >
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-slate-900 truncate">{lead.firstName} {lead.lastName}</div>
-                  <div className="text-xs text-slate-400 font-mono truncate">{lead.email}</div>
-                </div>
-                <div className="text-xs text-slate-600 truncate leading-tight">{(lead as any).form?.name ?? '—'}</div>
-                <div><StatusBadge status={lead.status} /></div>
-                <div><PctBar pct={lead.completionPct} /></div>
-                <div className="text-xs text-slate-400 font-mono">{fmtDate(lead.createdAt)}</div>
-              </button>
-            ))}
-          </div>
+      {/* Desktop table */}
+      <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="grid grid-cols-[30%_40%_10%_10%_10%] px-5 py-3 bg-slate-50 border-b border-slate-100">
+          {['Applicant', 'Program', 'Status', 'Completion', 'Created'].map(h => (
+            <div key={h} className="table-head">{h}</div>
+          ))}
         </div>
 
-        {/* Details panel */}
-        {showDetails && (
-          <div className="w-full md:w-[42%] lg:w-[38%]">
-            <div className="hidden md:flex mb-3">
-              <button type="button" className="btn btn-outline btn-sm" onClick={() => setSelectedId(null)}>
-                ← Back to list
-              </button>
-            </div>
-            <LeadDetails
-              lead={selectedLead}
-              isLoading={selectedLeadLoading}
-              onBack={() => setSelectedId(null)}
-              perms={perms}
-              emailPending={emailPending}
-              onSendEmail={args => sendEmail(args)}
-              onUpdateStatus={({ id, status }) => updateStatus({ id, status })}
-            />
+        {isLoading ? (
+          <div className="py-16 text-center">
+            <span className="w-6 h-6 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin inline-block mb-3" />
+            <div className="text-sm text-slate-400">Loading leads…</div>
           </div>
-        )}
+        ) : leads.length === 0 ? (
+          <div className="py-16 text-center text-slate-400">
+            <div className="text-3xl mb-2">📭</div>
+            <div className="text-sm">No leads match your filters</div>
+          </div>
+        ) : leads.map(lead => (
+          <button
+            key={lead.id} type="button"
+            onClick={() => setSelectedId(lead.id)}
+            className="w-full text-left grid grid-cols-[30%_40%_10%_10%_10%] px-5 py-3.5 border-b border-slate-100 items-center last:border-0 transition table-row hover:bg-slate-50"
+          >
+            <div className="min-w-0 pr-3">
+              <div className="text-sm font-medium text-slate-900 truncate">{lead.firstName} {lead.lastName}</div>
+              <div className="text-xs text-slate-400 font-mono truncate">{lead.email}</div>
+            </div>
+            <div className="text-xs text-slate-600 truncate leading-tight pr-3">{(lead as any).form?.name ?? '—'}</div>
+            {/* Status — left-aligned */}
+            <div className="flex items-center">
+              <StatusBadge status={lead.status} />
+            </div>
+            <div><PctBar pct={lead.completionPct} /></div>
+            <div className="text-xs text-slate-400 font-mono">{fmtDate(lead.createdAt)}</div>
+          </button>
+        ))}
       </div>
 
       {/* Pagination */}
@@ -487,6 +495,19 @@ export default function DashboardPage() {
               onClick={() => setF('page', String(pagination.page + 1))}>Next →</button>
           </div>
         </div>
+      )}
+
+      {/* Lead details — full-screen modal */}
+      {selectedId && (
+        <LeadDetailsModal
+          lead={selectedLead}
+          isLoading={selectedLeadLoading}
+          onClose={() => setSelectedId(null)}
+          perms={perms}
+          emailPending={emailPending}
+          onSendEmail={args => sendEmail(args)}
+          onUpdateStatus={({ id, status }) => updateStatus({ id, status })}
+        />
       )}
     </div>
   )
