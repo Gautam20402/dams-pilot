@@ -50,6 +50,88 @@ function validateField(field: Field, value: unknown) {
   return null
 }
 
+// ── Submitting overlay ──────────────────────────────────────────────────────
+function SubmittingOverlay({ orgName }: { orgName: string }) {
+  const [activeStep, setActiveStep] = useState(0)
+  const steps = [
+    'Validating your answers…',
+    'Saving your data securely…',
+    'Submitting your application…',
+    'Finalising — almost done…',
+  ]
+
+  useEffect(() => {
+    const t = setInterval(() => setActiveStep(s => Math.min(s + 1, steps.length - 1)), 1100)
+    return () => clearInterval(t)
+  }, [steps.length])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl px-8 py-10 max-w-sm w-full mx-4 text-center">
+
+        {/* Animated ring */}
+        <div className="relative w-24 h-24 mx-auto mb-6">
+          {/* Outer pulse ring */}
+          <div className="absolute inset-0 rounded-full border-4 border-emerald-100 animate-ping opacity-30" />
+          {/* Spinning arc */}
+          <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-emerald-500 animate-spin" />
+          {/* Inner icon */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-[60px] h-[60px] bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center shadow-md">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <h2 className="text-xl font-bold text-slate-900 mb-1">Submitting your application</h2>
+        <p className="text-sm text-slate-400 mb-7 truncate px-2">{orgName}</p>
+
+        {/* Animated steps */}
+        <div className="space-y-3 text-left mb-7">
+          {steps.map((label, i) => {
+            const done    = i < activeStep
+            const current = i === activeStep
+            const pending = i > activeStep
+            return (
+              <div
+                key={label}
+                className={`flex items-center gap-3 transition-all duration-500 ${pending ? 'opacity-30' : 'opacity-100'}`}
+              >
+                {/* Step icon */}
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-500 ${
+                  done    ? 'bg-emerald-500'
+                  : current ? 'bg-blue-600'
+                  : 'bg-slate-100'
+                }`}>
+                  {done ? (
+                    <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><path d="M2 8l4 4 8-8"/></svg>
+                  ) : current ? (
+                    <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  ) : null}
+                </div>
+                {/* Label */}
+                <span className={`text-sm font-medium ${
+                  done    ? 'text-emerald-700'
+                  : current ? 'text-blue-700'
+                  : 'text-slate-400'
+                }`}>
+                  {label}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Please don't close this page.<br />You'll be redirected automatically.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // ── Loading skeleton ────────────────────────────────────────────────────────
 function LoadingSkeleton() {
   return (
@@ -317,6 +399,7 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
   const [saving,      setSaving]     = useState(false)
   const [savedAt,     setSavedAt]    = useState<Date | null>(null)
   const [submitted,   setSubmitted]  = useState(false)
+  const [submitting,  setSubmitting] = useState(false)
   const [savedFields, setSavedFields] = useState<Set<string>>(new Set())
   const sessionId   = useRef(getOrCreateSessionId())
   const saveTimer   = useRef<ReturnType<typeof setTimeout>>()
@@ -407,13 +490,17 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
   async function handleSubmit() {
     const fields = (form?.schemaJson as any)?.fields ?? []
     if (!validateFields(fields, 'all')) return
-    await doSave(values)
-    const id = leadIdRef.current
-    if (id) {
-      try { await api.submitLead(id, sessionId.current) } catch (e) { console.error('Submit failed', e) }
+    setSubmitting(true)
+    try {
+      await doSave(values)
+      const id = leadIdRef.current
+      if (id) await api.submitLead(id, sessionId.current)
+      trackEvent('form_submit', { slug, leadId: leadIdRef.current })
+      setSubmitted(true)
+    } catch (e) {
+      console.error('Submit failed', e)
+      setSubmitting(false)
     }
-    trackEvent('form_submit', { slug, leadId: id })
-    setSubmitted(true)
   }
 
   if (isLoading) return <LoadingSkeleton />
@@ -572,15 +659,28 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
             </button>
           ) : (
             <button
-              className="btn btn-primary gap-2 bg-emerald-600 hover:bg-emerald-700 px-6 py-3 text-base"
+              className="btn btn-primary gap-2 bg-emerald-600 hover:bg-emerald-700 px-6 py-3 text-base disabled:opacity-60 disabled:cursor-not-allowed"
               onClick={handleSubmit}
+              disabled={submitting}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 8l4 4 8-8"/></svg>
-              Submit application
+              {submitting ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Submitting…
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 8l4 4 8-8"/></svg>
+                  Submit application
+                </>
+              )}
             </button>
           )}
         </div>
       </main>
+
+      {/* ── Submit overlay ─────────────────────────────────────────────── */}
+      {submitting && <SubmittingOverlay orgName={orgName} />}
 
       {/* ── Sticky bottom progress bar ──────────────────────────────────── */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 px-5 py-3 shadow-lg">
