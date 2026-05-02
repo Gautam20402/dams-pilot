@@ -34,6 +34,7 @@ export const api = {
   updateForm:    (id: string, d: unknown)    => apiClient.patch(`/api/forms/${id}`, d).then(r=>r.data),
   publishForm:   (id: string)                => apiClient.post(`/api/forms/${id}/publish`).then(r=>r.data),
   archiveForm:   (id: string)                => apiClient.post(`/api/forms/${id}/archive`).then(r=>r.data),
+  deleteForm:    (id: string)                => apiClient.delete(`/api/forms/${id}`).then(r=>r.data),
   // Outreach
   sendEmail:     (d: unknown)                => apiClient.post('/api/outreach/email', d).then(r=>r.data),
   sendSMS:       (d: unknown)                => apiClient.post('/api/outreach/sms', d).then(r=>r.data),

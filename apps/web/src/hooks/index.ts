@@ -116,6 +116,13 @@ export function useUpdateForm() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["forms"] }),
   });
 }
+export function useDeleteForm() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteForm(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["forms"] }),
+  });
+}
 
 // ── Departments ────────────────────────────────────────────────────────────────
 export function useDepartments() {

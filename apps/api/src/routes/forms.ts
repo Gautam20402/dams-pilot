@@ -73,4 +73,16 @@ export async function formsRoutes(fastify: FastifyInstance) {
     const form = await prisma.form.update({ where:{ id }, data:{ status:'archived' } })
     return reply.send({ success:true, data:form })
   })
+
+  fastify.delete('/:id', { preHandler:[requirePermission('canEditForms')] }, async (req, reply) => {
+    const { id } = req.params as { id:string }
+    const existing = await prisma.form.findUnique({ where:{ id } })
+    if (!existing) return reply.status(404).send({ success:false, error:'Form not found', code:'NOT_FOUND' })
+    if (req.userRole!=='SUPER_ADMIN' && existing.departmentId!==req.departmentId)
+      return reply.status(403).send({ success:false, error:'Forbidden', code:'DEPT_MISMATCH' })
+    // Nullify form reference on leads before deleting to avoid FK violation
+    await prisma.lead.updateMany({ where:{ formId:id }, data:{ formId:null } })
+    await prisma.form.delete({ where:{ id } })
+    return reply.send({ success:true })
+  })
 }

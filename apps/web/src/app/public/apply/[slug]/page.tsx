@@ -599,21 +599,6 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
         </div>
       )}
 
-      {/* ── Application ID banner (once a lead is created) ──────────────── */}
-      {leadId && (
-        <div className="max-w-xl mx-auto px-4 mt-5">
-          <div className="flex items-center gap-3 bg-slate-900 text-white rounded-2xl px-4 py-3">
-            <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center text-xs shrink-0">🆔</div>
-            <div className="min-w-0">
-              <div className="text-xs text-white/40 font-medium">Application in progress</div>
-              <div className="font-mono text-xs text-blue-300 truncate">{leadId}</div>
-            </div>
-            <div className="ml-auto shrink-0">
-              <span className="bg-amber-400/20 text-amber-300 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-400/20">Draft</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Form body ──────────────────────────────────────────────────── */}
       <main className="max-w-xl mx-auto px-4 py-6 pb-32">

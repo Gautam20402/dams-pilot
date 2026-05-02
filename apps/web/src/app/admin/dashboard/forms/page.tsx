@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { useForms, useDepartments, usePublishForm } from '@/hooks'
+import { useForms, useDepartments, usePublishForm, useDeleteForm } from '@/hooks'
 import { getAdminPayload } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
@@ -27,13 +27,15 @@ export default function FormsListPage() {
   const admin  = getAdminPayload()
   const isAdmin = admin?.role === 'admin'
 
-  const [deptFilter, setDeptFilter] = useState<string>('all')
-  const [search, setSearch]         = useState('')
-  const [copiedId, setCopiedId]     = useState<string | null>(null)
+  const [deptFilter,    setDeptFilter]    = useState<string>('all')
+  const [search,        setSearch]        = useState('')
+  const [copiedId,      setCopiedId]      = useState<string | null>(null)
+  const [deleteTarget,  setDeleteTarget]  = useState<{ id: string; name: string } | null>(null)
 
   const { data: formsData, isLoading, refetch } = useForms()
   const { data: deptData }  = useDepartments()
   const { mutate: publish } = usePublishForm()
+  const { mutate: deleteForm, isPending: deleting } = useDeleteForm()
 
   const departments: any[] = deptData?.data ?? []
   const allForms: any[]    = formsData?.data ?? []
@@ -245,11 +247,79 @@ export default function FormsListPage() {
                     Publish
                   </button>
                 )}
+                {/* Delete */}
+                <button
+                  type="button"
+                  className="btn btn-xs gap-1 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300"
+                  onClick={() => setDeleteTarget({ id: f.id, name: f.name })}
+                  title="Delete form"
+                >
+                  <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8L13 4"/>
+                  </svg>
+                  Delete
+                </button>
               </div>
             </div>
           ))
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="w-12 h-12 bg-red-50 border border-red-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 4h12M5 4V2h6v2M6 7v5M10 7v5M3 4l1 10h8L13 4"/>
+              </svg>
+            </div>
+            <h2 className="text-base font-bold text-slate-900 text-center mb-1">Delete form?</h2>
+            <p className="text-sm text-slate-500 text-center mb-1">
+              This will permanently delete
+            </p>
+            <p className="text-sm font-semibold text-slate-800 text-center mb-4 truncate px-2">
+              "{deleteTarget.name}"
+            </p>
+            <p className="text-xs text-slate-400 text-center mb-6">
+              All associated form data will be unlinked. This action cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="btn btn-outline flex-1"
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 transition flex items-center justify-center gap-2"
+                disabled={deleting}
+                onClick={() => {
+                  deleteForm(deleteTarget.id, {
+                    onSuccess: () => setDeleteTarget(null),
+                  })
+                }}
+              >
+                {deleting ? (
+                  <><span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Deleting…</>
+                ) : (
+                  'Yes, delete'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Per-dept quick create (admin only) */}
       {isAdmin && departments.length > 0 && (
