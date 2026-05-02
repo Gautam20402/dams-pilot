@@ -1,37 +1,60 @@
-// ── email.ts  (Gmail SMTP via nodemailer) ─────────────────────────────────────
+// ── email.ts  (Gmail API via OAuth2 — works on Railway / any host) ────────────
+// Uses googleapis over HTTPS (port 443), never blocked by cloud providers.
+// nodemailer is kept as the message builder; the transport is OAuth2/Gmail.
 import nodemailer from 'nodemailer'
+import { google }  from 'googleapis'
 import type { Lead } from '@dams/db'
 
-// ── Transporter (lazy, singleton) ────────────────────────────────────────────
+// ── OAuth2 client (lazy) ──────────────────────────────────────────────────────
 let _transporter: nodemailer.Transporter | null = null
 
-function getTransporter(): nodemailer.Transporter {
-  if (!_transporter) {
-    const port   = Number(process.env.SMTP_PORT ?? 587)
-    const secure = process.env.SMTP_SECURE === 'true' // true only for port 465
+async function getTransporter(): Promise<nodemailer.Transporter> {
+  if (_transporter) return _transporter
 
-    _transporter = nodemailer.createTransport({
-      host:             process.env.SMTP_HOST ?? 'smtp.gmail.com',
-      port,
-      secure,
-      auth: {
-        user: process.env.SMTP_USER ?? '',
-        pass: process.env.SMTP_PASS ?? '',
-      },
-      // Prevent requests from hanging forever
-      connectionTimeout: 10_000,   // 10 s to establish TCP connection
-      greetingTimeout:   10_000,   // 10 s waiting for SMTP greeting
-      socketTimeout:     15_000,   // 15 s of inactivity before close
-    })
+  const clientId     = process.env.GMAIL_CLIENT_ID     ?? ''
+  const clientSecret = process.env.GMAIL_CLIENT_SECRET ?? ''
+  const refreshToken = process.env.GMAIL_REFRESH_TOKEN ?? ''
+  const user         = process.env.GMAIL_USER          ?? process.env.SMTP_USER ?? ''
+
+  if (!clientId || !clientSecret || !refreshToken || !user) {
+    throw new Error(
+      'Gmail OAuth2 not configured. Set GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, ' +
+      'GMAIL_REFRESH_TOKEN and GMAIL_USER in Railway environment variables.'
+    )
   }
+
+  const oauth2 = new google.auth.OAuth2(
+    clientId,
+    clientSecret,
+    'https://developers.google.com/oauthplayground',
+  )
+  oauth2.setCredentials({ refresh_token: refreshToken })
+
+  const { token: accessToken } = await oauth2.getAccessToken()
+
+  _transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      type:         'OAuth2',
+      user,
+      clientId,
+      clientSecret,
+      refreshToken,
+      accessToken:  accessToken ?? undefined,
+    },
+  } as any)
+
   return _transporter
 }
 
-const FROM_NAME  = process.env.EMAIL_FROM_NAME ?? 'Graduate Admissions'
-const FROM_EMAIL = process.env.SMTP_USER        ?? 'noreply@example.com'
-const FROM       = `"${FROM_NAME}" <${FROM_EMAIL}>`
+const FROM_NAME = process.env.EMAIL_FROM_NAME ?? 'Graduate Admissions'
 
-// ── HTML wrapper ─────────────────────────────────────────────────────────────
+function fromAddress(): string {
+  const user = process.env.GMAIL_USER ?? process.env.SMTP_USER ?? ''
+  return `"${FROM_NAME}" <${user}>`
+}
+
+// ── HTML wrapper ──────────────────────────────────────────────────────────────
 function html(text: string): string {
   const lines = text
     .split('\n')
@@ -47,13 +70,9 @@ function html(text: string): string {
 // ── Service ───────────────────────────────────────────────────────────────────
 export const emailService = {
   async sendCustom(to: string, subject: string, body: string) {
-    const user = process.env.SMTP_USER
-    const pass = process.env.SMTP_PASS
-    if (!user || !pass) {
-      throw new Error('SMTP credentials not configured. Set SMTP_USER and SMTP_PASS environment variables.')
-    }
-    const info = await getTransporter().sendMail({
-      from: FROM,
+    const transporter = await getTransporter()
+    const info = await transporter.sendMail({
+      from: fromAddress(),
       to,
       subject,
       text: body,
