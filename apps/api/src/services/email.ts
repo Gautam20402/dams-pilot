@@ -7,14 +7,21 @@ let _transporter: nodemailer.Transporter | null = null
 
 function getTransporter(): nodemailer.Transporter {
   if (!_transporter) {
+    const port   = Number(process.env.SMTP_PORT ?? 587)
+    const secure = process.env.SMTP_SECURE === 'true' // true only for port 465
+
     _transporter = nodemailer.createTransport({
-      host:   process.env.SMTP_HOST   ?? 'smtp.gmail.com',
-      port:   Number(process.env.SMTP_PORT ?? 587),
-      secure: process.env.SMTP_SECURE === 'true', // false for port 587 (STARTTLS)
+      host:             process.env.SMTP_HOST ?? 'smtp.gmail.com',
+      port,
+      secure,
       auth: {
-        user: process.env.SMTP_USER ?? '',   // your Gmail address
-        pass: process.env.SMTP_PASS ?? '',   // Gmail App Password (16-char)
+        user: process.env.SMTP_USER ?? '',
+        pass: process.env.SMTP_PASS ?? '',
       },
+      // Prevent requests from hanging forever
+      connectionTimeout: 10_000,   // 10 s to establish TCP connection
+      greetingTimeout:   10_000,   // 10 s waiting for SMTP greeting
+      socketTimeout:     15_000,   // 15 s of inactivity before close
     })
   }
   return _transporter
@@ -40,6 +47,11 @@ function html(text: string): string {
 // ── Service ───────────────────────────────────────────────────────────────────
 export const emailService = {
   async sendCustom(to: string, subject: string, body: string) {
+    const user = process.env.SMTP_USER
+    const pass = process.env.SMTP_PASS
+    if (!user || !pass) {
+      throw new Error('SMTP credentials not configured. Set SMTP_USER and SMTP_PASS environment variables.')
+    }
     const info = await getTransporter().sendMail({
       from: FROM,
       to,

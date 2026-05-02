@@ -93,21 +93,21 @@
   .hint-text   { @apply text-sm text-slate-400; }
 
   /* ── Status badges ──────────────────────────────────────────────────── */
-  .badge        { @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold; }
+  .badge        { @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap; }
   .badge::before { content:''; @apply w-1.5 h-1.5 rounded-full flex-shrink-0; }
-  .s-new           { @apply bg-blue-50 text-blue-700 border border-blue-100; }
+  .s-new           { @apply bg-blue-100 text-blue-800 border border-blue-200; }
   .s-new::before   { @apply bg-blue-500; }
-  .s-partial       { @apply bg-amber-50 text-amber-700 border border-amber-100; }
+  .s-partial       { @apply bg-amber-100 text-amber-800 border border-amber-200; }
   .s-partial::before { @apply bg-amber-500; }
-  .s-contacted     { @apply bg-orange-50 text-orange-700 border border-orange-100; }
+  .s-contacted     { @apply bg-orange-100 text-orange-800 border border-orange-200; }
   .s-contacted::before { @apply bg-orange-500; }
-  .s-in_progress   { @apply bg-violet-50 text-violet-700 border border-violet-100; }
+  .s-in_progress   { @apply bg-violet-100 text-violet-800 border border-violet-200; }
   .s-in_progress::before { @apply bg-violet-500; }
-  .s-submitted     { @apply bg-emerald-50 text-emerald-700 border border-emerald-100; }
-  .s-submitted::before { @apply bg-emerald-500; }
-  .s-dropped       { @apply bg-red-50 text-red-600 border border-red-100; }
+  .s-submitted     { @apply bg-emerald-100 text-emerald-800 border border-emerald-200; }
+  .s-submitted::before { @apply bg-emerald-600; }
+  .s-dropped       { @apply bg-red-100 text-red-700 border border-red-200; }
   .s-dropped::before { @apply bg-red-500; }
-  .s-converted     { @apply bg-teal-50 text-teal-700 border border-teal-100; }
+  .s-converted     { @apply bg-teal-100 text-teal-800 border border-teal-200; }
   .s-converted::before { @apply bg-teal-500; }
 
   /* ── Source badges ──────────────────────────────────────────────────── */

@@ -13,7 +13,15 @@ export async function outreachRoutes(fastify: FastifyInstance) {
     const lead = await prisma.lead.findUnique({ where:{ id:b.data.leadId } })
     if (!lead) return reply.status(404).send({ success:false, error:'Lead not found', code:'NOT_FOUND' })
 
-    const result = await emailService.sendCustom(b.data.to, b.data.subject, b.data.body)
+    let result: { id: string }
+    try {
+      result = await emailService.sendCustom(b.data.to, b.data.subject, b.data.body)
+    } catch (err: any) {
+      const msg = err?.message ?? String(err)
+      req.log.error({ err, to: b.data.to }, 'Email send failed')
+      return reply.status(500).send({ success: false, error: msg, code: 'EMAIL_SEND_FAILED' })
+    }
+
     await prisma.outreachLog.create({ data:{ leadId:b.data.leadId,
       channel:'email', subject:b.data.subject, body:b.data.body, externalId:result.id } })
     await prisma.leadEvent.create({ data:{ leadId:b.data.leadId,
