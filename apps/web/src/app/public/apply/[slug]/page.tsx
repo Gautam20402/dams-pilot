@@ -452,26 +452,26 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50">
       {/* ── Top header ─────────────────────────────────────────────────── */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-5 h-16 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-sm">
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-5 min-h-[56px] flex items-center justify-between sticky top-0 z-20 shadow-sm py-2.5 gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl flex items-center justify-center text-white font-bold text-base shadow-sm shrink-0">
             {orgInitial}
           </div>
-          <div>
-            <div className="text-sm font-bold text-slate-900 leading-none">{orgName}</div>
-            <div className="text-xs text-slate-400 leading-none mt-0.5 truncate max-w-[200px]">{form.name}</div>
+          <div className="min-w-0">
+            <div className="text-sm font-bold text-slate-900 leading-snug">{orgName}</div>
+            <div className="text-xs text-slate-400 leading-none mt-0.5 truncate">{form.name}</div>
           </div>
         </div>
 
         {/* Auto-save indicator */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {saving ? (
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium bg-slate-50 border border-slate-200 rounded-full px-3 py-1.5">
+            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium bg-slate-50 border border-slate-200 rounded-full px-3 py-1.5 whitespace-nowrap">
               <span className="w-3 h-3 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
               Saving…
             </div>
           ) : savedAt ? (
-            <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-semibold bg-emerald-50 border border-emerald-200 rounded-full px-3 py-1.5 whitespace-nowrap">
               <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M2 8l4 4 8-8"/></svg>
               Saved {savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>

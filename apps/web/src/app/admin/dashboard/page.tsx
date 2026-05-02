@@ -35,6 +35,52 @@ function EmptyValue({ v }: Readonly<{ v: unknown }>) {
   return <>{String(v)}</>
 }
 
+const TRUNCATE_AT = 120
+
+function LongValue({ v }: Readonly<{ v: unknown }>) {
+  const [open, setOpen] = useState(false)
+  if (v === null || v === undefined || v === '') return <span className="text-slate-300">—</span>
+  const str = typeof v === 'object' ? JSON.stringify(v) : String(v)
+  if (str.length <= TRUNCATE_AT) return <>{str}</>
+  return (
+    <>
+      <span>{str.slice(0, TRUNCATE_AT)}…</span>
+      <button
+        type="button"
+        className="ml-1 text-blue-500 hover:text-blue-700 text-[11px] font-medium underline underline-offset-2"
+        onClick={() => setOpen(true)}
+      >
+        show more
+      </button>
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl p-5 max-w-lg w-full mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-semibold text-slate-900">Full value</div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="text-xs text-slate-700 break-words font-mono bg-slate-50 rounded-lg p-3 max-h-72 overflow-y-auto whitespace-pre-wrap">
+              {str}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 function SourceBadge({ source }: Readonly<{ source: string }>) {
   const label = source === 'ga_poll' ? 'GA4 Poll' : source === 'partial_save' ? 'Partial Save' : source === 'direct' ? 'Direct' : source.replaceAll('_', ' ')
   return <span className={`src-${source}`}>{label}</span>
@@ -128,13 +174,18 @@ function LeadDetails({
                 </button>
               )}
               {perms.canUpdateStatus && (
-                <select
-                  className="input text-xs"
-                  value={lead.status}
-                  onChange={e => onUpdateStatus({ id: lead.id, status: e.target.value })}
-                >
-                  {ALL_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                </select>
+                <div className="relative">
+                  <select
+                    className="input text-xs appearance-none pr-8 w-full"
+                    value={lead.status}
+                    onChange={e => onUpdateStatus({ id: lead.id, status: e.target.value })}
+                  >
+                    {ALL_STATUSES.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                  </select>
+                  <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 6l4 4 4-4"/>
+                  </svg>
+                </div>
               )}
             </div>
           </div>
@@ -179,7 +230,7 @@ function LeadDetails({
                   <div key={k} className="border border-slate-200 rounded-lg p-2.5 bg-white">
                     <div className="text-[11px] text-slate-400 font-mono truncate">{k}</div>
                     <div className="text-xs text-slate-800 break-words mt-0.5">
-                      <EmptyValue v={v} />
+                      <LongValue v={v} />
                     </div>
                   </div>
                 ))}
@@ -359,7 +410,7 @@ export default function DashboardPage() {
           {/* Desktop table */}
           <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             {/* Table header */}
-            <div className="grid grid-cols-[minmax(240px,1fr)_160px_130px_120px_150px] px-5 py-3 bg-slate-50 border-b border-slate-100">
+            <div className="grid grid-cols-[160px_1fr_120px_100px_130px] px-5 py-3 bg-slate-50 border-b border-slate-100">
               {['Applicant', 'Program', 'Status', 'Completion', 'Created'].map(h => (
                 <div key={h} className="table-head">{h}</div>
               ))}
@@ -379,7 +430,7 @@ export default function DashboardPage() {
               <button
                 key={lead.id} type="button"
                 onClick={() => setSelectedId(lead.id)}
-                className={`w-full text-left grid grid-cols-[minmax(240px,1fr)_160px_130px_120px_150px] px-5 py-3.5 border-b border-slate-100 items-center last:border-0 transition
+                className={`w-full text-left grid grid-cols-[160px_1fr_120px_100px_130px] px-5 py-3.5 border-b border-slate-100 items-center last:border-0 transition
                   ${selectedId === lead.id ? 'bg-blue-50 table-row-active' : 'table-row'}`}
               >
                 <div className="min-w-0">

@@ -113,7 +113,7 @@ function DepartmentsContent() {
 
       {/* Table */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="grid grid-cols-[1fr_1fr_220px_110px_80px] px-5 py-3 bg-slate-50 border-b border-slate-100">
+        <div className="grid grid-cols-[180px_160px_1fr_200px_60px] px-5 py-3 bg-slate-50 border-b border-slate-100">
           {['University / Campus', 'Department', 'Admin Email', 'Slug', 'Leads'].map(h => (
             <div key={h} className="table-head">{h}</div>
           ))}
@@ -134,7 +134,7 @@ function DepartmentsContent() {
           departments.map((dept: any) => (
             <div
               key={dept.id}
-              className="grid grid-cols-[1fr_1fr_220px_110px_80px] px-5 py-4 border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition-colors"
+              className="grid grid-cols-[180px_160px_1fr_200px_60px] px-5 py-4 border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition-colors"
             >
               {/* University */}
               <div className="min-w-0">
@@ -164,8 +164,8 @@ function DepartmentsContent() {
               </div>
 
               {/* Slug */}
-              <div>
-                <span className="text-[11px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">
+              <div className="min-w-0">
+                <span className="block truncate text-[11px] font-mono bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">
                   {dept.slug}
                 </span>
               </div>
