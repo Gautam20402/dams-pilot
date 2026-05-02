@@ -449,7 +449,7 @@ export default function DashboardPage() {
       <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="grid grid-cols-[30%_40%_10%_10%_10%] px-5 py-3 bg-slate-50 border-b border-slate-100">
           {['Applicant', 'Program', 'Status', 'Completion', 'Created'].map(h => (
-            <div key={h} className="table-head">{h}</div>
+            <div key={h} className="table-head text-left">{h}</div>
           ))}
         </div>
 
@@ -474,8 +474,8 @@ export default function DashboardPage() {
               <div className="text-xs text-slate-400 font-mono truncate">{lead.email}</div>
             </div>
             <div className="text-xs text-slate-600 truncate leading-tight pr-3">{(lead as any).form?.name ?? '—'}</div>
-            {/* Status — left-aligned */}
-            <div className="flex items-center">
+            {/* Status — left-aligned, matches header */}
+            <div className="flex items-center justify-start">
               <StatusBadge status={lead.status} />
             </div>
             <div><PctBar pct={lead.completionPct} /></div>
