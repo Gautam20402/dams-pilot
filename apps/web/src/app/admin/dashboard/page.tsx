@@ -94,11 +94,12 @@ function SourceBadge({ source }: Readonly<{ source: string }>) {
 
 // ── Lead Details Modal ──────────────────────────────────────────────────────
 function LeadDetailsModal({
-  lead, isLoading, onClose, perms, emailPending, onSendEmail, onUpdateStatus,
+  lead, isLoading, onClose, perms, emailPending, statusPending, onSendEmail, onUpdateStatus,
 }: Readonly<{
   lead: Lead | null; isLoading: boolean; onClose: () => void
   perms: { canUpdateStatus: boolean; canSendOutreach: boolean }
   emailPending: boolean
+  statusPending: boolean
   onSendEmail: (args: { to: string; subject: string; body: string; leadId: string }) => void
   onUpdateStatus: (args: { id: string; status: string }) => void
 }>) {
@@ -207,15 +208,23 @@ function LeadDetailsModal({
                   </button>
                 )}
                 {perms.canUpdateStatus && (
-                  <select
-                    className="sel text-xs w-full"
-                    value={lead.status}
-                    onChange={e => onUpdateStatus({ id: lead.id, status: e.target.value })}
-                  >
-                    {ALL_STATUSES.map(s => (
-                      <option key={s} value={s}>{fmtStatus(s)}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      className="sel text-xs w-full"
+                      value={lead.status}
+                      disabled={statusPending}
+                      onChange={e => onUpdateStatus({ id: lead.id, status: e.target.value })}
+                    >
+                      {ALL_STATUSES.map(s => (
+                        <option key={s} value={s}>{fmtStatus(s)}</option>
+                      ))}
+                    </select>
+                    {statusPending && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/70 rounded-xl pointer-events-none">
+                        <span className="w-3.5 h-3.5 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -286,7 +295,7 @@ export default function DashboardPage() {
 
   const { data, isLoading, isFetching, refetch } = useLeads(filters)
   const { data: statsData } = useLeadStats()
-  const { mutate: updateStatus } = useUpdateLeadStatus()
+  const { mutate: updateStatus, isPending: statusPending } = useUpdateLeadStatus()
   const { mutate: sendEmail, isPending: emailPending } = useSendEmail()
 
   const leads: Lead[] = data?.data ?? []
@@ -511,6 +520,7 @@ export default function DashboardPage() {
           onClose={() => setSelectedId(null)}
           perms={perms}
           emailPending={emailPending}
+          statusPending={statusPending}
           onSendEmail={args => sendEmail(args)}
           onUpdateStatus={({ id, status }) => updateStatus({ id, status })}
         />

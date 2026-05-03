@@ -69,4 +69,33 @@ export const emailService = {
       `Hi ${name},\n\nThank you! Your application has been received and is now under review.\n\nReference number: ${lead.id}\n\nYou will hear from us within 6–8 weeks.\n\n— Graduate Admissions Team`,
     )
   },
+
+  async sendStatusUpdate(lead: Lead, newStatus: string) {
+    if (!lead.email) return
+    const name = lead.firstName ?? 'Applicant'
+    const ref  = lead.id
+
+    const templates: Record<string, { subject: string; body: string }> = {
+      contacted: {
+        subject: 'We have reviewed your application',
+        body: `Hi ${name},\n\nThank you for your interest. Our admissions team has reviewed your application (ref: ${ref}) and we will be in touch with you shortly.\n\nIf you have any questions in the meantime, please do not hesitate to reach out.\n\n— Graduate Admissions Team`,
+      },
+      in_progress: {
+        subject: 'Your application is under review',
+        body: `Hi ${name},\n\nWe wanted to let you know that your application (ref: ${ref}) is currently being reviewed by our admissions committee.\n\nThis process typically takes 4–6 weeks. We will notify you as soon as a decision has been made.\n\nThank you for your patience.\n\n— Graduate Admissions Team`,
+      },
+      converted: {
+        subject: 'Congratulations — your application has been accepted!',
+        body: `Hi ${name},\n\nWe are delighted to inform you that your application (ref: ${ref}) has been successful!\n\nCongratulations — you have been accepted. A member of our team will be in touch shortly with the next steps and enrolment details.\n\nWelcome aboard!\n\n— Graduate Admissions Team`,
+      },
+      dropped: {
+        subject: 'Update on your application',
+        body: `Hi ${name},\n\nWe wanted to reach out regarding your application (ref: ${ref}).\n\nUnfortunately, we are unable to progress your application at this time. We encourage you to reapply in the next intake cycle.\n\nThank you for your interest and we wish you all the best.\n\n— Graduate Admissions Team`,
+      },
+    }
+
+    const template = templates[newStatus]
+    if (!template) return  // no email for new / partial / submitted (handled elsewhere)
+    return this.sendCustom(lead.email, template.subject, template.body)
+  },
 }

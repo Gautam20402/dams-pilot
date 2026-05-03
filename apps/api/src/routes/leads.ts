@@ -247,6 +247,12 @@ export async function leadsRoutes(fastify: FastifyInstance) {
       beforeState:{ status:lead.status }, afterState:{ status:b.data.status },
       metadata:{ changedBy: req.adminEmail ?? req.adminId },
     }})
+
+    // Fire-and-forget status email (only for meaningful transitions)
+    emailService.sendStatusUpdate(updated, b.data.status).catch(e =>
+      fastify.log.error({ err: e, leadId: id, status: b.data.status }, 'Status email failed'),
+    )
+
     return reply.send({ success:true, data:updated })
   })
 }

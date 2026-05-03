@@ -180,7 +180,7 @@ export default function FormsListPage() {
             >
               {/* Name + URL */}
               <div className="min-w-0 pr-3">
-                <div className="text-sm font-semibold text-slate-900 truncate">{f.name}</div>
+                <div className="text-xs font-semibold text-slate-900 truncate">{f.name}</div>
                 <div className="text-[11px] text-slate-400 font-mono mt-0.5 truncate">id: {f.id}</div>
                 {f.slug && (
                   <a
@@ -212,7 +212,7 @@ export default function FormsListPage() {
               <div><StatusChip status={f.status ?? 'draft'} /></div>
 
               {/* Field count */}
-              <div className="text-sm font-mono text-slate-500">
+              <div className="text-xs font-mono text-slate-500">
                 {(f.schemaJson as any)?.fields?.length ?? 0} fields
               </div>
 
