@@ -1,56 +1,24 @@
-// ── email.ts  (Gmail API via OAuth2 — works on Railway / any host) ────────────
-// Uses googleapis over HTTPS (port 443), never blocked by cloud providers.
-// nodemailer is kept as the message builder; the transport is OAuth2/Gmail.
+// ── email.ts  (Brevo SMTP relay — port 2525, never blocked by Railway) ────────
 import nodemailer from 'nodemailer'
-import { google }  from 'googleapis'
 import type { Lead } from '@dams/db'
 
-// ── OAuth2 client (lazy) ──────────────────────────────────────────────────────
-let _transporter: nodemailer.Transporter | null = null
+function buildTransporter(): nodemailer.Transporter {
+  const host = process.env.SMTP_HOST ?? 'smtp-relay.brevo.com'
+  const port = Number(process.env.SMTP_PORT ?? 2525)
+  const user = process.env.SMTP_USER ?? ''
+  const pass = process.env.SMTP_PASS ?? ''
 
-async function getTransporter(): Promise<nodemailer.Transporter> {
-  if (_transporter) return _transporter
-
-  const clientId     = process.env.GMAIL_CLIENT_ID     ?? ''
-  const clientSecret = process.env.GMAIL_CLIENT_SECRET ?? ''
-  const refreshToken = process.env.GMAIL_REFRESH_TOKEN ?? ''
-  const user         = process.env.GMAIL_USER          ?? process.env.SMTP_USER ?? ''
-
-  if (!clientId || !clientSecret || !refreshToken || !user) {
-    throw new Error(
-      'Gmail OAuth2 not configured. Set GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, ' +
-      'GMAIL_REFRESH_TOKEN and GMAIL_USER in Railway environment variables.'
-    )
+  if (!user || !pass) {
+    throw new Error('SMTP not configured. Set SMTP_USER and SMTP_PASS in Railway environment variables.')
   }
 
-  const oauth2 = new google.auth.OAuth2(
-    clientId,
-    clientSecret,
-    'https://developers.google.com/oauthplayground',
-  )
-  oauth2.setCredentials({ refresh_token: refreshToken })
-
-  const { token: accessToken } = await oauth2.getAccessToken()
-
-  _transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type:         'OAuth2',
-      user,
-      clientId,
-      clientSecret,
-      refreshToken,
-      accessToken:  accessToken ?? undefined,
-    },
-  } as any)
-
-  return _transporter
+  return nodemailer.createTransport({ host, port, auth: { user, pass } })
 }
 
 const FROM_NAME = process.env.EMAIL_FROM_NAME ?? 'Graduate Admissions'
 
 function fromAddress(): string {
-  const user = process.env.GMAIL_USER ?? process.env.SMTP_USER ?? ''
+  const user = process.env.SMTP_USER ?? ''
   return `"${FROM_NAME}" <${user}>`
 }
 
@@ -70,7 +38,7 @@ function html(text: string): string {
 // ── Service ───────────────────────────────────────────────────────────────────
 export const emailService = {
   async sendCustom(to: string, subject: string, body: string) {
-    const transporter = await getTransporter()
+    const transporter = buildTransporter()
     const info = await transporter.sendMail({
       from: fromAddress(),
       to,
@@ -98,7 +66,7 @@ export const emailService = {
     return this.sendCustom(
       lead.email,
       `Application received — ref: ${lead.id}`,
-      `Hi ${name},\n\nYour application has been received and is under review.\n\nReference: ${lead.id}\n\nYou will hear from us within 6–8 weeks.\n\n— Graduate Admissions Team`,
+      `Hi ${name},\n\nThank you! Your application has been received and is now under review.\n\nReference number: ${lead.id}\n\nYou will hear from us within 6–8 weeks.\n\n— Graduate Admissions Team`,
     )
   },
 }

@@ -1,5 +1,4 @@
 import type { FastifyInstance } from 'fastify'
-import { google } from 'googleapis'
 import { prisma } from '@dams/db'
 import { SendEmailSchema, SendSMSSchema, LogCallSchema } from '@dams/validators'
 import { requirePermission } from '../middleware/auth.js'
@@ -8,32 +7,27 @@ import { smsService }   from '../services/sms.js'
 
 export async function outreachRoutes(fastify: FastifyInstance) {
 
-  // ── Gmail OAuth2 diagnostic — GET /api/outreach/email-test ───────────────
+  // ── SMTP diagnostic — GET /api/outreach/email-test ───────────────────────
   fastify.get('/email-test', async (_req, reply) => {
-    const clientId     = process.env.GMAIL_CLIENT_ID     ?? ''
-    const clientSecret = process.env.GMAIL_CLIENT_SECRET ?? ''
-    const refreshToken = process.env.GMAIL_REFRESH_TOKEN ?? ''
-    const user         = process.env.GMAIL_USER ?? process.env.SMTP_USER ?? ''
+    const user = process.env.SMTP_USER ?? ''
+    const pass = process.env.SMTP_PASS ?? ''
+    const host = process.env.SMTP_HOST ?? 'smtp-relay.brevo.com'
+    const port = process.env.SMTP_PORT ?? '2525'
 
     const config = {
-      GMAIL_USER:          user         ? `${user.slice(0,4)}****`         : '(not set)',
-      GMAIL_CLIENT_ID:     clientId     ? `${clientId.slice(0,8)}****`     : '(not set)',
-      GMAIL_CLIENT_SECRET: clientSecret ? '****'                           : '(not set)',
-      GMAIL_REFRESH_TOKEN: refreshToken ? `${refreshToken.slice(0,6)}****` : '(not set)',
+      SMTP_HOST: host,
+      SMTP_PORT: port,
+      SMTP_USER: user ? `${user.slice(0, 4)}****` : '(not set)',
+      SMTP_PASS: pass ? '****' : '(not set)',
     }
 
-    if (!clientId || !clientSecret || !refreshToken || !user) {
-      return reply.status(500).send({ ok: false, config, error: 'One or more Gmail OAuth2 env vars not set' })
+    if (!user || !pass) {
+      return reply.status(500).send({ ok: false, config, error: 'SMTP_USER or SMTP_PASS not set' })
     }
 
     try {
-      const oauth2 = new google.auth.OAuth2(
-        clientId, clientSecret, 'https://developers.google.com/oauthplayground'
-      )
-      oauth2.setCredentials({ refresh_token: refreshToken })
-      const { token } = await oauth2.getAccessToken()
-      if (!token) throw new Error('Failed to obtain access token — check refresh token or client credentials')
-      return reply.send({ ok: true, config, message: 'Gmail OAuth2 credentials verified ✓' })
+      const result = await emailService.sendCustom(user, 'DAMS email test ✓', 'If you see this, Brevo SMTP is working correctly.')
+      return reply.send({ ok: true, config, messageId: result.id })
     } catch (err: any) {
       return reply.status(500).send({ ok: false, config, error: err?.message ?? String(err) })
     }

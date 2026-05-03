@@ -124,17 +124,14 @@ export default function FormsListPage() {
           />
         </div>
         {isAdmin && (
-          <div className="relative">
-            <select
-              className="input w-52 text-xs appearance-none pr-8"
-              value={deptFilter}
-              onChange={e => setDeptFilter(e.target.value)}
-            >
-              <option value="all">All departments</option>
-              {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
-            <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6l4 4 4-4"/></svg>
-          </div>
+          <select
+            className="sel w-52 text-xs"
+            value={deptFilter}
+            onChange={e => setDeptFilter(e.target.value)}
+          >
+            <option value="all">All departments</option>
+            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
         )}
         <span className="ml-auto text-xs text-slate-400 font-mono">{forms.length} form{forms.length !== 1 ? 's' : ''}</span>
         <button className="btn btn-outline btn-sm" onClick={() => void refetch()}>↺ Refresh</button>

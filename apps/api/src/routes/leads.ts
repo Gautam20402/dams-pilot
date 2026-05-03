@@ -108,6 +108,13 @@ export async function leadsRoutes(fastify: FastifyInstance) {
       })
     }
 
+    // Send confirmation email to the applicant (fire-and-forget — never blocks the response)
+    if (updated.email) {
+      emailService.sendConfirmation(updated).catch(e =>
+        fastify.log.error({ err: e, leadId: updated.id }, 'Confirmation email failed'),
+      )
+    }
+
     return reply.send({
       success:true,
       data:{ id:updated.id, status:updated.status },

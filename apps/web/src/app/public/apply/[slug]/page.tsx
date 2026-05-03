@@ -151,6 +151,12 @@ function LoadingSkeleton() {
 
 // ── Confirmation screen ─────────────────────────────────────────────────────
 function Confirmation({ leadId, formName, orgName }: { leadId: string; formName: string; orgName: string }) {
+  const [copied, setCopied] = useState(false)
+  function copyRef() {
+    void navigator.clipboard.writeText(leadId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center px-4">
       <div className="w-full max-w-md">
@@ -173,8 +179,34 @@ function Confirmation({ leadId, formName, orgName }: { leadId: string; formName:
 
           {/* Reference number */}
           <div className="bg-slate-900 rounded-2xl px-6 py-5 mb-6 text-left">
-            <div className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-1">Reference Number</div>
-            <div className="font-mono text-blue-300 text-sm break-all">{leadId}</div>
+            <div className="text-slate-400 text-xs font-semibold uppercase tracking-widest mb-2">Reference Number</div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="font-mono text-blue-300 text-sm break-all flex-1">{leadId}</div>
+              <button
+                type="button"
+                onClick={copyRef}
+                title="Copy reference number"
+                className="shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all
+                           bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white"
+              >
+                {copied ? (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 8l4 4 8-8"/>
+                    </svg>
+                    <span className="text-emerald-400">Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="5" y="5" width="9" height="9" rx="1.5"/>
+                      <path d="M3 11H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1"/>
+                    </svg>
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mb-6 text-sm">

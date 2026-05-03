@@ -87,6 +87,17 @@
            placeholder-slate-300 text-slate-800;
   }
   .input-error { @apply border-red-400 focus:border-red-500 focus:ring-red-100; }
+  /* ── Styled select — chevron baked in, no wrapper div needed ──────────── */
+  .sel {
+    @apply border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm bg-white
+           outline-none transition-all duration-150
+           focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10
+           text-slate-800 appearance-none cursor-pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%2394a3b8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.25rem;
+  }
   .label       { @apply block text-sm font-semibold text-slate-700 mb-1.5 tracking-wide; }
   .field-wrap  { @apply flex flex-col gap-1; }
   .err-text    { @apply text-xs text-red-500 mt-1; }
