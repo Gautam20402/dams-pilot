@@ -1,25 +1,16 @@
-// ── email.ts  (Brevo SMTP relay — port 2525, never blocked by Railway) ────────
-import nodemailer from 'nodemailer'
+// ── email.ts  (Brevo REST API — HTTPS port 443, works on Railway) ─────────────
+// No SMTP, no port blocking. Just a plain HTTPS POST to api.brevo.com.
 import type { Lead } from '@dams/db'
 
-function buildTransporter(): nodemailer.Transporter {
-  const host = process.env.SMTP_HOST ?? 'smtp-relay.brevo.com'
-  const port = Number(process.env.SMTP_PORT ?? 2525)
-  const user = process.env.SMTP_USER ?? ''
-  const pass = process.env.SMTP_PASS ?? ''
+const BREVO_URL = 'https://api.brevo.com/v3/smtp/email'
 
-  if (!user || !pass) {
-    throw new Error('SMTP not configured. Set SMTP_USER and SMTP_PASS in Railway environment variables.')
-  }
-
-  return nodemailer.createTransport({ host, port, auth: { user, pass } })
-}
-
-const FROM_NAME = process.env.EMAIL_FROM_NAME ?? 'Graduate Admissions'
-
-function fromAddress(): string {
-  const user = process.env.SMTP_USER ?? ''
-  return `"${FROM_NAME}" <${user}>`
+function getConfig() {
+  const apiKey    = process.env.BREVO_API_KEY   ?? ''
+  const fromEmail = process.env.SMTP_USER       ?? ''
+  const fromName  = process.env.EMAIL_FROM_NAME ?? 'Graduate Admissions'
+  if (!apiKey)    throw new Error('BREVO_API_KEY not set in Railway environment variables.')
+  if (!fromEmail) throw new Error('SMTP_USER (sender email) not set in Railway environment variables.')
+  return { apiKey, fromEmail, fromName }
 }
 
 // ── HTML wrapper ──────────────────────────────────────────────────────────────
@@ -38,15 +29,24 @@ function html(text: string): string {
 // ── Service ───────────────────────────────────────────────────────────────────
 export const emailService = {
   async sendCustom(to: string, subject: string, body: string) {
-    const transporter = buildTransporter()
-    const info = await transporter.sendMail({
-      from: fromAddress(),
-      to,
-      subject,
-      text: body,
-      html: html(body),
+    const { apiKey, fromEmail, fromName } = getConfig()
+    const res = await fetch(BREVO_URL, {
+      method:  'POST',
+      headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender:      { name: fromName, email: fromEmail },
+        to:          [{ email: to }],
+        subject,
+        htmlContent: html(body),
+        textContent: body,
+      }),
     })
-    return { id: info.messageId }
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(`Brevo API error ${res.status}: ${err}`)
+    }
+    const data = await res.json() as { messageId?: string }
+    return { id: data.messageId ?? 'sent' }
   },
 
   async sendDropOff(lead: Lead) {
