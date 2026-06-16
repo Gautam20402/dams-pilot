@@ -86,8 +86,8 @@ export const salesforceBackendService = {
   },
 
   async submitForm(payload: SalesforceBackendSubmitPayload): Promise<SalesforceBackendSubmitSuccess> {
-    const url = process.env.SALESFORCE_BACKEND_SUBMIT_URL ?? 'https://salesforce-backend-pkwm.onrender.com/submitForm'
-    const origin = process.env.SALESFORCE_BACKEND_ORIGIN ?? process.env.NEXTJS_URL ?? 'http://localhost:3000'
+    const url = process.env.SALESFORCE_BACKEND_SUBMIT_URL ?? 'https://mixsvf0aq2.execute-api.ap-south-1.amazonaws.com/default/submitForm'
+    const origin = process.env.SALESFORCE_BACKEND_ORIGIN ?? process.env.NEXTJS_URL ?? 'https://dams-final.vercel.app'
 
     const res = await fetch(url, {
       method: 'POST',
